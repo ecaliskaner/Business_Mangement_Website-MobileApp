@@ -1,5 +1,5 @@
 // Clean stale data from previous versions
-localStorage.removeItem("insectram-product-demo");
+localStorage.removeItem("ladybug-product-demo"); localStorage.removeItem("insectram-product-demo"); localStorage.removeItem("insectram-ops");
 const initial = {
   view: "dashboard", selectedWork: "WO-2048", selectedTech: "Ayşe Demir", completed: 27,
   sites: [
@@ -147,6 +147,111 @@ const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAl
 const names = { dashboard:"Genel bakış", sites:"Tesisler", work:"İş emirleri", team:"Ekip & rota", insights:"Analizler", reports:"Raporlar", companyDetail:"Tesis Detayı & Profil", mobileSim:"Mobil Uygulama" };
 const stateLabel = {risk:"Riskli",watch:"İzlenmeli",healthy:"Sağlıklı"};
 
+const users = {
+  'admin@ladybug.com': { email: 'admin@ladybug.com', name: 'Seda Kaya', role: 'admin', title: 'Operasyon Yöneticisi (Boss)', avatar: 'SK' },
+  'admin@insectram.com': { email: 'admin@ladybug.com', name: 'Seda Kaya', role: 'admin', title: 'Operasyon Yöneticisi (Boss)', avatar: 'SK' },
+  'ayse@ladybug.com': { email: 'ayse@ladybug.com', name: 'Ayşe Demir', role: 'tech', title: 'Baş Teknisyen', avatar: 'AD' },
+  'ayse@insectram.com': { email: 'ayse@ladybug.com', name: 'Ayşe Demir', role: 'tech', title: 'Baş Teknisyen', avatar: 'AD' },
+  'acme@client.com': { email: 'acme@client.com', name: 'Ahmet Çelik', role: 'client', title: 'Acme Gıda Yetkilisi', avatar: 'AC' }
+};
+
+function applyRoleAccess() {
+  if (!state.currentUser) return;
+  
+  const role = state.currentUser.role;
+  const appShell = $('.app-shell');
+  const viewLogin = $('#viewLogin');
+  
+  if (appShell) appShell.classList.remove('hidden');
+  if (viewLogin) viewLogin.classList.add('hidden');
+  
+  const footerBlock = $('#sidebarUserProfileBlock');
+  if (footerBlock) {
+    footerBlock.innerHTML = `
+      <div class="avatar" style="background:${role === 'tech' ? '#f4c7a9' : (role === 'client' ? '#d6e7f9' : '#efe5d8')}; color:#18181b; font-weight:700; width:30px; height:30px; border-radius:50%; display:grid; place-items:center; font-size:10px;">${state.currentUser.avatar}</div>
+      <div style="flex:1; text-align:left; min-width:0; overflow:hidden;">
+        <b style="font-size:12px; display:block; color:#fff; white-space:nowrap; text-overflow:ellipsis; overflow:hidden;">${state.currentUser.name}</b>
+        <small style="font-size:10px; color:#aeb8c1; display:block; white-space:nowrap; text-overflow:ellipsis; overflow:hidden;">${state.currentUser.title}</small>
+      </div>
+      <button class="secondary-btn" id="btnLogOut" style="height:26px; padding:0 8px; font-size:9px; border-color:rgba(255,255,255,0.2); background:rgba(255,255,255,0.05); color:#fff; font-weight:700; border-radius:6px; cursor:pointer;">Çıkış</button>
+    `;
+  }
+
+  if (role === 'admin') {
+    $$('.sidebar .nav button').forEach(b => b.classList.remove('hidden'));
+    $$('.sidebar .nav-label').forEach(l => l.classList.remove('hidden'));
+    $('#addSite')?.classList.remove('hidden');
+    $('#newWorkOrder')?.classList.remove('hidden');
+    $('#newWorkOrderSecondary')?.classList.remove('hidden');
+    $('#backToSitesFromCompBtn')?.classList.remove('hidden');
+    $('#companyFileUploadForm')?.classList.remove('hidden');
+    $('#companyRecommendationForm')?.classList.remove('hidden');
+    $('#adminInspectionForm')?.classList.remove('hidden');
+    $('#printStationQrBtn')?.classList.remove('hidden');
+  } 
+  else if (role === 'tech') {
+    $$('.sidebar .nav button').forEach(b => {
+      const view = b.dataset.view;
+      b.classList.toggle('hidden', view !== 'work' && view !== 'mobileSim');
+    });
+    $$('.sidebar .nav-label').forEach(l => l.classList.add('hidden'));
+    
+    $('#addSite')?.classList.add('hidden');
+    $('#newWorkOrder')?.classList.add('hidden');
+    $('#newWorkOrderSecondary')?.classList.add('hidden');
+    $('#backToSitesFromCompBtn')?.classList.add('hidden');
+    $('#companyFileUploadForm')?.classList.add('hidden');
+    $('#companyRecommendationForm')?.classList.add('hidden');
+    $('#adminInspectionForm')?.classList.remove('hidden');
+    $('#printStationQrBtn')?.classList.add('hidden');
+    
+    if (state.view !== 'work' && state.view !== 'mobileSim') {
+      setView('work');
+    }
+  } 
+  else if (role === 'client') {
+    $$('.sidebar .nav button').forEach(b => b.classList.add('hidden'));
+    $$('.sidebar .nav-label').forEach(l => l.classList.add('hidden'));
+    
+    $('#addSite')?.classList.add('hidden');
+    $('#newWorkOrder')?.classList.add('hidden');
+    $('#newWorkOrderSecondary')?.classList.add('hidden');
+    
+    activeSiteId = 's1'; 
+    setView('companyDetail');
+    
+    $('#backToSitesFromCompBtn')?.classList.add('hidden');
+    $('#companyFileUploadForm')?.classList.add('hidden');
+    $('#companyRecommendationForm')?.classList.add('hidden');
+    $('#adminInspectionForm')?.classList.add('hidden');
+    $('#printStationQrBtn')?.classList.add('hidden');
+  }
+}
+
+function checkSession() {
+  const savedUser = localStorage.getItem("ladybug-user");
+  const appShell = $('.app-shell');
+  const viewLogin = $('#viewLogin');
+  
+  if (savedUser) {
+    state.currentUser = JSON.parse(savedUser);
+    if (appShell) appShell.classList.remove('hidden');
+    if (viewLogin) viewLogin.classList.add('hidden');
+    applyRoleAccess();
+  } else {
+    state.currentUser = null;
+    if (appShell) appShell.classList.add('hidden');
+    if (viewLogin) viewLogin.classList.remove('hidden');
+  }
+}
+
+function logout() {
+  state.currentUser = null;
+  localStorage.removeItem("ladybug-user");
+  checkSession();
+  toast("Oturum kapatıldı.");
+}
+
 let activeSiteId = null;
 let activeStationCode = null;
 
@@ -159,11 +264,11 @@ let activeMobileStationCode = null;
 
 function load(){
   try {
-    const saved = JSON.parse(localStorage.getItem("insectram-ops"));
+    const saved = JSON.parse(localStorage.getItem("ladybug-ops"));
     if (!saved) return structuredClone(initial);
     // Detect stale data missing new fields and reset
     if (saved.sites && saved.sites[0] && !saved.sites[0].methods) {
-      localStorage.removeItem("insectram-ops");
+      localStorage.removeItem("ladybug-ops");
       return structuredClone(initial);
     }
     // Initialize recommendations array for all sites if missing
@@ -178,7 +283,7 @@ function load(){
     return {...structuredClone(initial),...saved};
   } catch { return structuredClone(initial); }
 }
-function save(){localStorage.setItem("insectram-ops",JSON.stringify(state))}
+function save(){localStorage.setItem("ladybug-ops",JSON.stringify(state))}
 function toast(message){const el=$("#toast");el.textContent=message;el.classList.remove("hidden");clearTimeout(toast.t);toast.t=setTimeout(()=>el.classList.add("hidden"),3000)}
 
 function setView(view){
@@ -312,7 +417,12 @@ function renderSites(){
 }
 
 function renderWork(filter='all'){
-  const list=state.work.filter(w=> {
+  let sourceList = state.work;
+  if (state.currentUser && state.currentUser.role === 'tech') {
+    sourceList = sourceList.filter(w => w.tech === state.currentUser.name);
+  }
+  
+  const list=sourceList.filter(w=> {
     if (w.completed) return filter === 'completed';
     if (filter === 'completed') return false;
     return filter==='all'||(filter==='critical'?w.priority==='critical':filter==='scheduled'?w.type==='Planlı servis':false);
@@ -423,6 +533,7 @@ function render(){
   renderReports();
   renderAiPredictions();
   setView(state.view);
+  applyRoleAccess();
 }
 
 // Company Detail Page & Tabs Management
@@ -785,8 +896,12 @@ function renderMobileRoute() {
   const container = $('#mobileWorkOrdersList');
   if (!container) return;
   
-  // Show list of jobs
-  container.innerHTML = state.work.map(w => {
+  let list = state.work;
+  if (state.currentUser && state.currentUser.role === 'tech') {
+    list = list.filter(w => w.tech === state.currentUser.name);
+  }
+  
+  container.innerHTML = list.map(w => {
     const site = state.sites.find(s => s.id === w.siteId) || state.sites[0];
     const statusText = w.completed ? 'Tamamlandı' : (w.status === 'started_by_first_qr' ? 'Çalışma Başladı' : (w.status === 'arrived_gps' ? 'Tesise Varış' : 'Planlandı'));
     const badgeClass = w.completed ? 'success' : (w.status === 'started_by_first_qr' ? 'info' : 'warning');
@@ -1202,7 +1317,7 @@ function printQrCodeSticker(code) {
       <p class="text-muted" style="font-size:11px; margin-bottom:20px;">Termal rulo etiket yazıcıları için uygundur.</p>
       
       <div id="qrPrintArea" style="width:220px; margin:0 auto; padding:15px; border:3px double #000; border-radius:8px; text-align:center; background:#fff; color:#000;">
-        <div style="font-size:9px; font-weight:800; text-transform:uppercase; letter-spacing:1px; margin-bottom:8px;">INSECTRAM OPERATIONS</div>
+        <div style="font-size:9px; font-weight:800; text-transform:uppercase; letter-spacing:1px; margin-bottom:8px;">LADYBUG OPERATIONS</div>
         
         <div style="width:110px; height:110px; margin: 0 auto; border:4px solid #000; padding:4px; display:flex; flex-direction:column; gap:6px; justify-content:center; align-items:center; background:#fff; position:relative;">
           <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:6px; width:90px; height:90px;">
@@ -1250,11 +1365,11 @@ function openReportModal(reportId) {
       <div style="display:flex; justify-content:space-between; align-items:start; border-bottom:2px solid var(--blue); padding-bottom:12px; margin-bottom:16px;">
         <div>
           <h2 style="margin:0; font-size:18px; color:var(--blue);">${r.title}</h2>
-          <p style="margin:3px 0 0; font-size:11px; color:var(--muted)">Insectram Enterprise Operations Cloud Raporlama</p>
+          <p style="margin:3px 0 0; font-size:11px; color:var(--muted)">Ladybug Enterprise Operations Cloud Raporlama</p>
         </div>
         <div style="text-align:right;">
-          <strong style="font-size:14px;">INSECTRAM</strong>
-          <div style="font-size:9px; color:var(--muted)">Sertifika No: INS-${Math.floor(10000+Math.random()*90000)}</div>
+          <strong style="font-size:14px;">LADYBUG</strong>
+          <div style="font-size:9px; color:var(--muted)">Sertifika No: LADY-${Math.floor(10000+Math.random()*90000)}</div>
         </div>
       </div>
       
@@ -1429,6 +1544,26 @@ function modal(type) {
 // Event bindings
 function bind(){
   document.addEventListener('click',e=>{
+    if (e.target.id === 'btnLogOut') {
+      logout();
+      return;
+    }
+    
+    const quickLogin = e.target.closest('.quick-login-btn');
+    if (quickLogin) {
+      const roleKey = quickLogin.dataset.loginAs;
+      let email = 'admin@ladybug.com';
+      if (roleKey === 'tech') email = 'ayse@ladybug.com';
+      if (roleKey === 'client') email = 'acme@client.com';
+      
+      state.currentUser = users[email];
+      localStorage.setItem("ladybug-user", JSON.stringify(state.currentUser));
+      checkSession();
+      render();
+      toast(`Hoş geldiniz, ${state.currentUser.name}!`);
+      return;
+    }
+
     const nav=e.target.closest('[data-view]');
     if(nav) setView(nav.dataset.view);
     
@@ -1810,6 +1945,24 @@ function bind(){
   $('#trendFilter')?.addEventListener('change',renderInsights);
   
   document.addEventListener('submit',e=>{
+    if (e.target.id === 'loginForm') {
+      e.preventDefault();
+      const email = $('#inpLoginEmail').value.trim();
+      const password = $('#inpLoginPassword').value.trim();
+      
+      const user = users[email];
+      if (user && password === '123') {
+        state.currentUser = user;
+        localStorage.setItem("ladybug-user", JSON.stringify(state.currentUser));
+        checkSession();
+        render();
+        toast(`Başarıyla giriş yapıldı. Hoş geldiniz, ${user.name}!`);
+      } else {
+        toast('Hata: Geçersiz e-posta veya şifre (Şifre: 123)');
+      }
+      return;
+    }
+    
     if(e.target.id==='createWork'){
       e.preventDefault();
       const f = new FormData(e.target);
@@ -2008,4 +2161,6 @@ function bind(){
     }
   });
 }
-bind();render();
+bind();
+checkSession();
+render();

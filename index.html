@@ -3,15 +3,15 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Insectram | Operations</title>
+    <title>Ladybug | Operations</title>
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
     <div class="app-shell">
       <aside class="sidebar">
-        <a class="brand" href="#dashboard" aria-label="Insectram ana sayfa">
+        <a class="brand" href="#dashboard" aria-label="Ladybug ana sayfa">
           <span class="brand-symbol" aria-hidden="true"><i></i><i></i><i></i></span>
-          <span><b>insectram</b><small>Operations cloud</small></span>
+          <span><b>ladybug</b><small>Operations cloud</small></span>
         </a>
 
         <div class="workspace-switcher">
@@ -32,10 +32,7 @@
           <button class="nav-item" data-view="reports"><span>▤</span> Raporlar</button>
         </nav>
 
-        <div class="sidebar-footer">
-          <div class="avatar">SK</div>
-          <span><b>Seda Kaya</b><small>Operasyon yöneticisi</small></span>
-          <button class="icon-btn" data-action="profile" aria-label="Profil menüsü">•••</button>
+        <div class="sidebar-footer" id="sidebarUserProfileBlock">
         </div>
       </aside>
 
@@ -154,7 +151,7 @@
           <article class="panel" style="grid-column: span 2; margin-top: 14px;">
             <div class="panel-header" style="margin-bottom:14px;">
               <div>
-                <p class="overline" style="color:var(--violet)">🤖 INSECTRAM AI PREDICTIVE RISK ENGINE</p>
+                <p class="overline" style="color:var(--violet)">🤖 LADYBUG AI PREDICTIVE RISK ENGINE</p>
                 <h2 style="margin-top:4px;">Yapay Zeka Risk & Eğilim Öngörüleri (Gelecek Hafta)</h2>
               </div>
               <span class="live-pill" style="color:var(--violet); background:#f1edff; padding:4px 8px; border-radius:6px; font-size:10px; font-weight:700;"><i></i> AI AKTİF</span>
@@ -836,6 +833,54 @@
     </div>
     <div id="modal" class="modal hidden" role="dialog" aria-modal="true"><div class="modal-card"><button class="modal-close" aria-label="Kapat">×</button><div id="modalContent"></div></div></div>
     <div id="toast" class="toast hidden"></div>
+
+    <!-- Ladybug Login Screen Overlay -->
+    <div id="viewLogin" class="login-wrapper hidden">
+      <div class="login-card">
+        <div class="login-header">
+          <div style="display:flex; justify-content:center; margin-bottom:12px;">
+            <span class="brand-symbol" style="background:#ef4444;"><i></i><i></i><i></i></span>
+          </div>
+          <h2>Ladybug Cloud Giriş</h2>
+          <p>Dijital Zararlı Kontrol & Operasyon Yönetim Portalı</p>
+        </div>
+        
+        <form id="loginForm" class="form-grid" style="margin-top:20px;">
+          <label class="form-label" style="text-align:left; font-size:11px; font-weight:700;">
+            E-posta Adresi
+            <input required type="email" id="inpLoginEmail" placeholder="admin@insectram.com" class="form-input" style="height:38px; border:1px solid var(--line); border-radius:7px; margin-top:4px;">
+          </label>
+          
+          <label class="form-label" style="text-align:left; font-size:11px; font-weight:700;">
+            Şifre
+            <input required type="password" id="inpLoginPassword" placeholder="••••••••" class="form-input" style="height:38px; border:1px solid var(--line); border-radius:7px; margin-top:4px;">
+          </label>
+          
+          <button type="submit" class="primary-btn" style="width:100%; justify-content:center; height:38px; margin-top:12px; font-weight:700;">Giriş Yap</button>
+        </form>
+        
+        <div class="login-divider" style="margin:20px 0; text-align:center; position:relative; font-size:10px; font-weight:700; color:var(--muted);">
+          <span style="background:#fff; padding:0 8px; position:relative; z-index:1;">VEYA TEST KULLANICISI SEÇİN</span>
+          <div style="position:absolute; top:50%; left:0; right:0; height:1px; background:var(--line); z-index:0;"></div>
+        </div>
+        
+        <div class="quick-login-grid" style="display:grid; grid-template-columns:1fr; gap:8px;">
+          <button class="secondary-btn quick-login-btn" data-login-as="admin" style="display:flex; flex-direction:column; align-items:start; padding:10px; height:auto; text-align:left; gap:2px;">
+            <b style="font-size:12px; color:var(--ink);">🔑 Seda Kaya (Yönetici)</b>
+            <span style="font-size:10px; color:var(--muted); font-weight:normal;">Tam yetkili sistem yöneticisi ve zararlı uzmanı boss.</span>
+          </button>
+          <button class="secondary-btn quick-login-btn" data-login-as="tech" style="display:flex; flex-direction:column; align-items:start; padding:10px; height:auto; text-align:left; gap:2px;">
+            <b style="font-size:12px; color:var(--ink);">🔧 Ayşe Demir (Teknisyen)</b>
+            <span style="font-size:10px; color:var(--muted); font-weight:normal;">Saha çalışanı. Sadece kendi iş emirlerini ve rotasını görür.</span>
+          </button>
+          <button class="secondary-btn quick-login-btn" data-login-as="client" style="display:flex; flex-direction:column; align-items:start; padding:10px; height:auto; text-align:left; gap:2px;">
+            <b style="font-size:12px; color:var(--ink);">🏢 Acme Foods (Müşteri)</b>
+            <span style="font-size:10px; color:var(--muted); font-weight:normal;">Müşteri temsilcisi portalı. Sadece kendi tesisine erişir.</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
     <script src="./app.js"></script>
   </body>
 </html>
