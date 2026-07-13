@@ -1,0 +1,4 @@
+gemini-code-*
+.gemini/
+.system_generated/
+*.log
