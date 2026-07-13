@@ -422,6 +422,20 @@ function renderWork(filter='all'){
     sourceList = sourceList.filter(w => w.tech === state.currentUser.name);
   }
   
+  // Calculate dynamic stats based on sourceList
+  const allCount = sourceList.filter(w => !w.completed).length;
+  const criticalCount = sourceList.filter(w => !w.completed && w.priority === 'critical').length;
+  const scheduledCount = sourceList.filter(w => !w.completed && (w.due.includes('Bugün') || w.due.includes('13 Tem') || w.due.includes('Tem'))).length;
+  const completedCount = sourceList.filter(w => w.completed).length;
+  const siteAlerts = state.sites.filter(s => s.issues > 0).length;
+
+  if ($('#workStatAll')) $('#workStatAll').textContent = allCount;
+  if ($('#workStatCritical')) $('#workStatCritical').textContent = criticalCount;
+  if ($('#workStatScheduled')) $('#workStatScheduled').textContent = scheduledCount;
+  if ($('#workStatCompleted')) $('#workStatCompleted').textContent = completedCount;
+  if ($('#sidebarWorkCount')) $('#sidebarWorkCount').textContent = allCount;
+  if ($('#siteAlertCount')) $('#siteAlertCount').textContent = siteAlerts;
+
   const list=sourceList.filter(w=> {
     if (w.completed) return filter === 'completed';
     if (filter === 'completed') return false;

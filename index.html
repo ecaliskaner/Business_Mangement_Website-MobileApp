@@ -23,8 +23,8 @@
         <nav class="nav" aria-label="Ana menü">
           <p class="nav-label">OPERASYON</p>
           <button class="nav-item active" data-view="dashboard"><span>▦</span> Genel bakış</button>
-          <button class="nav-item" data-view="sites"><span>⌖</span> Tesisler <em id="siteAlertCount">6</em></button>
-          <button class="nav-item" data-view="work"><span>✓</span> İş emirleri <em>18</em></button>
+          <button class="nav-item" data-view="sites"><span>⌖</span> Tesisler <em id="siteAlertCount">0</em></button>
+          <button class="nav-item" data-view="work"><span>✓</span> İş emirleri <em id="sidebarWorkCount">0</em></button>
           <button class="nav-item" data-view="team"><span>◉</span> Ekip & rota</button>
           <button class="nav-item" data-view="mobileSim"><span>📱</span> Mobil Uygulama</button>
           <p class="nav-label">YÖNETİM</p>
@@ -96,10 +96,10 @@
           
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
             <div class="work-summary" style="margin-bottom:0; display:flex; gap:8px; flex:1;">
-              <button class="work-stat active" data-work-filter="all" style="padding:8px 12px; min-width:120px;"><span>Açık İş</span><strong>18</strong></button>
-              <button class="work-stat" data-work-filter="critical" style="padding:8px 12px; min-width:120px;"><span>Kritik</span><strong>6</strong></button>
-              <button class="work-stat" data-work-filter="scheduled" style="padding:8px 12px; min-width:120px;"><span>Bugün</span><strong>9</strong></button>
-              <button class="work-stat" data-work-filter="completed" style="padding:8px 12px; min-width:120px;"><span>Tamamlanan</span><strong id="workCompleted">27</strong></button>
+              <button class="work-stat active" data-work-filter="all" style="padding:8px 12px; min-width:120px;"><span>Açık İş</span><strong id="workStatAll">0</strong></button>
+              <button class="work-stat" data-work-filter="critical" style="padding:8px 12px; min-width:120px;"><span>Kritik</span><strong id="workStatCritical">0</strong></button>
+              <button class="work-stat" data-work-filter="scheduled" style="padding:8px 12px; min-width:120px;"><span>Bugün</span><strong id="workStatScheduled">0</strong></button>
+              <button class="work-stat" data-work-filter="completed" style="padding:8px 12px; min-width:120px;"><span>Tamamlanan</span><strong id="workStatCompleted">0</strong></button>
             </div>
             
             <div style="display:flex; gap:8px; margin-left:14px;">
