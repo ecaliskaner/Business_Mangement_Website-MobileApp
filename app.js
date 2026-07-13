@@ -962,9 +962,15 @@ function showMobileJobDetail(work) {
   if (mobArrived) {
     btnGps.classList.add('hidden');
     indGps.classList.remove('hidden');
+    if ($('#gpsCoordsText')) {
+      $('#gpsCoordsText').textContent = "(GPS Konumu Kayıtlı)";
+    }
   } else {
     btnGps.classList.remove('hidden');
     indGps.classList.add('hidden');
+    if ($('#gpsCoordsText')) {
+      $('#gpsCoordsText').textContent = "";
+    }
   }
   
   // 2. QR Start
@@ -1643,10 +1649,20 @@ function bind(){
     }
 
     const nav=e.target.closest('[data-view]');
-    if(nav) setView(nav.dataset.view);
+    if(nav) {
+      setView(nav.dataset.view);
+      $('.sidebar').classList.remove('open');
+    }
     
+    if ($('.sidebar').classList.contains('open') && !e.target.closest('.sidebar') && !e.target.closest('#mobileMenu')) {
+      $('.sidebar').classList.remove('open');
+    }
+
     const target=e.target.closest('[data-view-target]');
-    if(target) setView(target.dataset.viewTarget);
+    if(target) {
+      setView(target.dataset.viewTarget);
+      $('.sidebar').classList.remove('open');
+    }
     
     const wf=e.target.closest('[data-work-filter]');
     if(wf){
@@ -1862,6 +1878,9 @@ function bind(){
         save();
         btnGps.classList.add('hidden');
         $('#indicatorGpsVerified').classList.remove('hidden');
+        if ($('#gpsCoordsText')) {
+          $('#gpsCoordsText').textContent = `(Enlem: ${lat.toFixed(5)}, Boylam: ${lon.toFixed(5)})`;
+        }
         $('#cardQrStart').classList.remove('disabled');
         $('#btnMobScanFirstQr').disabled = false;
         
