@@ -1111,11 +1111,75 @@ function openMobileScanner(title, instructions, stations, onScanComplete) {
   const newTrigger = trigger.cloneNode(true);
   trigger.parentNode.replaceChild(newTrigger, trigger);
   
+  const stopScannerAndComplete = (code) => {
+    if (window.activeHtml5QrCode && window.activeHtml5QrCode.isScanning) {
+      window.activeHtml5QrCode.stop().then(() => {
+        $('#pageMobileScanAnimation').classList.add('hidden');
+        onScanComplete(code);
+      }).catch(err => {
+        console.error(err);
+        $('#pageMobileScanAnimation').classList.add('hidden');
+        onScanComplete(code);
+      });
+    } else {
+      $('#pageMobileScanAnimation').classList.add('hidden');
+      onScanComplete(code);
+    }
+  };
+
   newTrigger.addEventListener('click', () => {
-    const code = selector.value;
-    $('#pageMobileScanAnimation').classList.add('hidden');
-    onScanComplete(code);
+    stopScannerAndComplete(selector.value);
   });
+
+  // Start Real Camera Scanner if html5-qrcode is loaded
+  if (typeof Html5Qrcode !== 'undefined') {
+    const readerEl = $('#qr-reader');
+    if (readerEl) readerEl.innerHTML = `<div class="scanner-laser" style="z-index:2;"></div><span style="font-size:12px; color:#666; text-align:center; padding:10px; z-index:1;">Kamera başlatılıyor...</span>`;
+    
+    // Clear any previous scanner
+    if (window.activeHtml5QrCode) {
+      try {
+        if (window.activeHtml5QrCode.isScanning) {
+          window.activeHtml5QrCode.stop();
+        }
+      } catch(e){}
+    }
+    
+    setTimeout(() => {
+      const html5QrCode = new Html5Qrcode("qr-reader");
+      window.activeHtml5QrCode = html5QrCode;
+      
+      const qrConfig = { fps: 10, qrbox: { width: 160, height: 160 } };
+      
+      html5QrCode.start(
+        { facingMode: "environment" },
+        qrConfig,
+        (decodedText) => {
+          addTelemetryLog(`GERÇEK QR BARKOD OKUNDU: "${decodedText}"`);
+          
+          let matched = null;
+          stations.forEach(st => {
+            if (decodedText.toUpperCase().includes(st.code.toUpperCase())) {
+              matched = st.code;
+            }
+          });
+          
+          const codeToUse = matched || decodedText || stations[0].code;
+          toast(`QR Eşleşti: ${codeToUse}`);
+          stopScannerAndComplete(codeToUse);
+        },
+        (errorMessage) => {
+          // Ignore scanning error
+        }
+      ).catch(err => {
+        console.warn("Camera start failed:", err);
+        addTelemetryLog("UYARI: Kamera bulunamadı veya izni verilmedi. Manuel seçim devrede.");
+        if (readerEl) readerEl.innerHTML = `<span style="font-size:11px; color:#a3a3a3; text-align:center; padding:10px;">Kamera açılamadı. Lütfen HTTPS bağlantısını kontrol edin veya simülatörü kullanın.</span>`;
+      });
+    }, 400);
+  } else {
+    addTelemetryLog("Sistem Uyarısı: QR Kütüphanesi yüklenemedi. Simülatör devrede.");
+  }
 }
 
 function addTelemetryLog(text) {
@@ -1789,9 +1853,10 @@ function bind(){
     if (e.target.id === 'btnMobArrived') {
       const btnGps = $('#btnMobArrived');
       addTelemetryLog("Konum doğrulanıyor... (GPS enlem/boylam geofence karşılaştırması)");
-      btnGps.textContent = "⌛ Konum Kontrol Ediliyor...";
+      btnGps.textContent = "⌛ GPS Aranıyor...";
       btnGps.disabled = true;
-      setTimeout(() => {
+      
+      const proceedGpsArrival = (lat, lon) => {
         mobArrived = true;
         mobJob.status = 'arrived_gps';
         save();
@@ -1800,10 +1865,26 @@ function bind(){
         $('#cardQrStart').classList.remove('disabled');
         $('#btnMobScanFirstQr').disabled = false;
         
-        addTelemetryLog("BAŞARILI: Teknisyen konumu geofence sınırları içerisinde doğrulandı!");
+        addTelemetryLog(`BAŞARILI: Teknisyen konumu geofence sınırları içerisinde doğrulandı! (${lat.toFixed(4)}, ${lon.toFixed(4)})`);
         toast("GPS Konumu doğrulandı. İlk QR okutarak mesaiyi başlatın.");
         updateSimStepsHighlight();
-      }, 700);
+      };
+
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            proceedGpsArrival(pos.coords.latitude, pos.coords.longitude);
+          },
+          (err) => {
+            addTelemetryLog("UYARI: Gerçek GPS alınamadı. Simüle edilmiş koordinatlar kullanılıyor.");
+            proceedGpsArrival(41.0082, 28.9784);
+          },
+          { enableHighAccuracy: true, timeout: 5000 }
+        );
+      } else {
+        addTelemetryLog("UYARI: Tarayıcıda GPS servisi bulunamadı. Simüle koordinat kullanılıyor.");
+        proceedGpsArrival(41.0082, 28.9784);
+      }
     }
     
     if (e.target.id === 'btnMobScanFirstQr') {
@@ -1826,6 +1907,9 @@ function bind(){
     }
     
     if (e.target.id === 'btnCancelScan') {
+      if (window.activeHtml5QrCode && window.activeHtml5QrCode.isScanning) {
+        window.activeHtml5QrCode.stop().catch(err => console.error(err));
+      }
       $('#pageMobileScanAnimation').classList.add('hidden');
       $('#pageMobileJobDetail').classList.remove('hidden');
     }

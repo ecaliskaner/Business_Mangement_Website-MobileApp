@@ -949,3 +949,49 @@
   border-color: var(--blue) !important;
   transform: translateY(-1px);
 }
+
+/* Mobile-responsive native simulator view */
+@media (max-width: 767px) {
+  #mobileSim {
+    padding: 0 !important;
+    background: #fafafa;
+  }
+  .mobile-sim-layout {
+    grid-template-columns: 1fr !important;
+    gap: 0 !important;
+    margin: 0 !important;
+  }
+  .sim-instructions {
+    display: none !important;
+  }
+  .simulation-logs {
+    display: none !important;
+  }
+  .phone-wrapper {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    height: 100vh !important;
+  }
+  .phone-container {
+    width: 100% !important;
+    height: 100vh !important;
+    max-height: 100vh !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    background: transparent !important;
+  }
+  .phone-screen {
+    border-radius: 0 !important;
+    height: 100vh !important;
+    border: 0 !important;
+  }
+  .phone-notch {
+    display: none !important;
+  }
+  .phone-status-bar {
+    border-radius: 0 !important;
+  }
+}
