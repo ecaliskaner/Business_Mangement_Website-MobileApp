@@ -4,6 +4,9 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Ladybug | Operations</title>
+    <meta name="theme-color" content="#18181b" />
+    <meta name="description" content="Ladybug Operations is a digital pest control and field service operations platform." />
+    <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
@@ -199,6 +202,8 @@
                 <button class="comp-nav-tab" data-comp-tab="methods">⚙ Uygulanan Yöntemler</button>
                 <button class="comp-nav-tab" data-comp-tab="files">📂 Belgeler & Dosyalar (<span id="compFilesCount">3</span>)</button>
                 <button class="comp-nav-tab" data-comp-tab="recommendations">✓ Öneriler & Aksiyonlar (<span id="compRecsCount">0</span>)</button>
+                <button class="comp-nav-tab" data-comp-tab="chemicals">💊 Kimyasal Kullanım (<span id="compChemicalsCount">0</span>)</button>
+                <button class="comp-nav-tab" data-comp-tab="analytics">📊 Tesis Analizleri</button>
               </nav>
             </aside>
 
@@ -255,6 +260,11 @@
                           <div style="padding-bottom:0;"><span>Tesis Adresi</span><b id="compAddress">Gebze OSB, Kocaeli</b></div>
                         </div>
                       </div>
+                    </div>
+                    <div style="grid-column: span 2; margin-top:16px;">
+                      <p class="overline">HİZMET KAPSAMI & SÖZLEŞME FREKANSLARl</p>
+                      <div id="compServiceScopeContainer" style="margin-top:6px;"></div>
+                      <div id="compPricingContainer" style="margin-top:8px;"></div>
                     </div>
                   </div>
 
@@ -372,12 +382,41 @@
                         <label class="form-label">
                           Haşere Aktivitesi
                           <select name="pestType" id="inpPestType" class="form-select">
-                            <option value="none">Yok</option>
-                            <option value="mouse">Fare (Rodent)</option>
-                            <option value="rat">Sıçan (Rodent)</option>
-                            <option value="cockroach">Hamamböceği (Crawler)</option>
-                            <option value="fly">Sinek (Flying)</option>
-                            <option value="other">Diğer Haşere</option>
+                            <optgroup label="Aktivite">
+                              <option value="none">Aktivite Yok</option>
+                            </optgroup>
+                            <optgroup label="Kemirgen">
+                              <option value="mouse">Fare (Mouse)</option>
+                              <option value="rat">Sıçan (Rat)</option>
+                            </optgroup>
+                            <optgroup label="Yürüyen Haşere">
+                              <option value="german_cockroach">Alman Hamamböceği</option>
+                              <option value="oriental_cockroach">Doğu Hamamböceği</option>
+                              <option value="american_cockroach">Amerikan Hamamböceği</option>
+                              <option value="cockroach">Hamamböceği (Genel)</option>
+                              <option value="ground_beetle">Kınkanatlı</option>
+                              <option value="other_crawling">Diğer Yürüyen</option>
+                            </optgroup>
+                            <optgroup label="Uçan Haşere">
+                              <option value="house_fly">Karasinek</option>
+                              <option value="mosquito">Sivrisinek</option>
+                              <option value="fruit_fly">Meyve Sineği</option>
+                              <option value="humpback_fly">Kambur Sineği</option>
+                              <option value="small_flies">Küçük Sinek</option>
+                              <option value="wasp">Arı</option>
+                              <option value="fly">Sinek (Genel)</option>
+                            </optgroup>
+                            <optgroup label="Depo Zararlıları">
+                              <option value="indian_meal_moth">Kuru Meyve Güvesi</option>
+                              <option value="flour_moth">Değirmen Güvesi</option>
+                              <option value="grain_moth">Arpa Güvesi</option>
+                              <option value="flour_beetle">Un / Kırma Biti</option>
+                              <option value="grain_weevil">Buğday/Pirinç Biti</option>
+                              <option value="cigarette_beetle">Tatlı Kurt</option>
+                            </optgroup>
+                            <optgroup label="Diğer">
+                              <option value="other">Diğer Haşere</option>
+                            </optgroup>
                           </select>
                         </label>
 
@@ -391,8 +430,12 @@
                           <select name="status" id="inpStatus" class="form-select">
                             <option value="clean">Temiz & Sağlam</option>
                             <option value="activity">Aktivite Var</option>
-                            <option value="damaged">Hasarlı / Kırık</option>
-                            <option value="missing">Kayıp / Eksik</option>
+                            <option value="damaged">Hasarlı / Kırık (KI)</option>
+                            <option value="missing">Kayıp / Eksik (KA)</option>
+                            <option value="not_accessible">Ulaşılamadı (U)</option>
+                            <option value="renewed">İstasyon Yenilendi (Y)</option>
+                            <option value="bait_changed">Yem Değişti (YD)</option>
+                            <option value="glue_changed">Yapışkan Plaka Değişti</option>
                           </select>
                         </label>
 
@@ -557,6 +600,109 @@
                 </article>
               </div>
 
+              <!-- TAB Pane 6: Chemical Usage -->
+              <div class="tab-pane hidden" id="paneCompChemicals">
+                <article class="panel" style="margin-bottom:16px;">
+                  <h2>Kimyasal Kullanım Kayıtları</h2>
+                  <p class="text-muted" style="font-size:12px; margin-bottom:20px;">Ziyaretlerde kullanılan pestisit ve biyosidal ürünlerin uygulama kayıtları, dozaj hesaplamaları ve sorumlu teknisyen bilgileri.</p>
+                  
+                  <div class="table-panel" style="border:1px solid var(--line); border-radius:8px; margin-bottom:20px; overflow:auto;">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Kimyasal / Etken Madde</th>
+                          <th>Kategori</th>
+                          <th>Kullanım Miktarı</th>
+                          <th>Uygulama Alanı</th>
+                          <th>Referans Dozaj</th>
+                          <th>Uygulayan</th>
+                          <th>Tarih</th>
+                        </tr>
+                      </thead>
+                      <tbody id="compChemicalsTableBody">
+                        <!-- Dynamically populated -->
+                      </tbody>
+                    </table>
+                  </div>
+                </article>
+
+                <article class="panel">
+                  <p class="overline">YENİ KİMYASAL KULLANIM KAYDI</p>
+                  <form class="form-grid" id="companyChemicalForm" style="grid-template-columns: 1.5fr 1fr 1fr 1fr auto; align-items: end; gap:12px; margin-top:8px;">
+                    <label class="form-label" style="margin-bottom:0;">
+                      Kimyasal Seçin
+                      <select required id="inpChemicalSelect" class="form-select" style="margin-top:4px; height:37px; padding:0 8px; font-size:12px;">
+                        <option value="">-- Kimyasal seçin --</option>
+                        <option value="ch1">K-Othrine SC 25 (Deltamethrin)</option>
+                        <option value="ch2">Goliath Gel (Fipronil)</option>
+                        <option value="ch3">Racumin Paste (Coumatetralyl)</option>
+                        <option value="ch4">Storm Secure (Flocoumafen)</option>
+                        <option value="ch5">Aqua K-Othrine EW 20 (Deltamethrin)</option>
+                        <option value="ch6">Icon 10 CS (Lambda-cyhalothrin)</option>
+                        <option value="ch7">Maxforce White IC (Imidacloprid)</option>
+                        <option value="ch8">Cislin 2.5 UL (Deltamethrin)</option>
+                        <option value="ch9">Steri-Fab (İzopropil Alkol)</option>
+                        <option value="ch10">Actellic 50 EC (Pirimiphos-methyl)</option>
+                        <option value="ch11">Demand CS (Lambda-cyhalothrin)</option>
+                        <option value="ch12">Responsar SC (Alfasipermetrin)</option>
+                      </select>
+                    </label>
+                    <label class="form-label" style="margin-bottom:0;">
+                      Kullanım Miktarı
+                      <input required type="text" id="inpChemicalQty" placeholder="Örn: 250 ml" class="form-input" style="margin-top:4px;">
+                    </label>
+                    <label class="form-label" style="margin-bottom:0;">
+                      Uygulama Alanı
+                      <input required type="text" id="inpChemicalArea" placeholder="Örn: 500 m²" class="form-input" style="margin-top:4px;">
+                    </label>
+                    <label class="form-label" style="margin-bottom:0;">
+                      Açıklama
+                      <input type="text" id="inpChemicalNotes" placeholder="Uygulama notu" class="form-input" style="margin-top:4px;">
+                    </label>
+                    <button type="submit" class="primary-btn" style="height:37px; padding:0 20px;">💊 Kaydet</button>
+                  </form>
+                </article>
+              </div>
+
+              <!-- TAB Pane 7: Client Analytics -->
+              <div class="tab-pane hidden" id="paneCompAnalytics">
+                <article class="panel">
+                  <div class="panel-header" style="margin-bottom:14px;">
+                    <div>
+                      <p class="overline">TESİS ANALİZLERİ</p>
+                      <h2>Zararlı Aktivite Trendleri & İstatistikler</h2>
+                    </div>
+                    <button class="secondary-btn" id="btnDownloadChart" style="height:30px; padding:0 12px; font-size:11px;">📥 Grafiği İndir</button>
+                  </div>
+                  
+                  <div style="display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap;" id="analyticsFilterChips">
+                    <button class="filter-btn active" data-analytics-filter="all">Tümü</button>
+                    <button class="filter-btn" data-analytics-filter="rodent">🪤 Kemirgen</button>
+                    <button class="filter-btn" data-analytics-filter="crawling">🪳 Yürüyen</button>
+                    <button class="filter-btn" data-analytics-filter="flying">🪰 Uçan</button>
+                    <button class="filter-btn" data-analytics-filter="stored">📦 Depo Zararlısı</button>
+                  </div>
+                  
+                  <div style="background:var(--soft); border:1px solid var(--line); border-radius:10px; padding:20px; min-height:280px; position:relative;">
+                    <canvas id="analyticsCanvas" width="700" height="250" style="width:100%; height:250px;"></canvas>
+                  </div>
+                  <p style="text-align:center; font-size:10px; color:var(--muted); margin-top:8px;">Son 6 aylık zararlı aktivite trendi · Aylık toplam bulgu sayıları</p>
+                </article>
+
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:16px; margin-top:16px;">
+                  <article class="panel">
+                    <p class="overline">ÖNERİ İSTATİSTİKLERİ</p>
+                    <h3 style="margin-bottom:12px;">Düzeltici Faaliyet Özeti</h3>
+                    <div id="recStatsContainer" style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;"></div>
+                  </article>
+                  <article class="panel">
+                    <p class="overline">KİMYASAL KULLANIM ÖZETİ</p>
+                    <h3 style="margin-bottom:12px;">Son 6 Ay Toplam</h3>
+                    <div id="chemStatsContainer" style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;"></div>
+                  </article>
+                </div>
+              </div>
+
             </div>
           </div>
         </section>
@@ -591,8 +737,8 @@
                   <p>İnteraktif haritayı veya istasyon listesini açarak yem durumlarını ve zararlı türlerini girip kaydedin.</p>
                 </li>
                 <li id="step5">
-                  <b>5. Raporu Senkronize Et</b>
-                  <p>"Formu Kaydet" butonuna basarak verileri sunucuya gönderin. Dashboard verileri anında güncellenir.</p>
+                  <b>5. İmza & Raporu Gönder</b>
+                  <p>Dijital imzaları alın, "Formu Kaydet" butonuna basarak verileri sunucuya gönderin.</p>
                 </li>
               </ol>
 
@@ -711,6 +857,26 @@
                           <!-- List of stations -->
                         </div>
                       </div>
+
+                      <!-- Digital Signature Capture -->
+                      <div class="mob-action-card disabled" id="cardSignature">
+                        <div class="mob-card-desc" style="margin-bottom:10px;">
+                          <b>5. Dijital İmza</b>
+                          <p>Servis sonunda müşteri ve teknisyen imzası alınır.</p>
+                        </div>
+                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                          <div>
+                            <label style="font-size:10px; font-weight:700; color:var(--muted); margin-bottom:4px; display:block;">MÜŞTERİ İMZASI</label>
+                            <canvas id="sigCanvasCustomer" width="200" height="80" style="width:100%; height:80px; border:1px dashed var(--line); border-radius:6px; background:#fafafa; touch-action:none; cursor:crosshair;"></canvas>
+                            <button type="button" class="text-btn" id="btnClearSigCustomer" style="font-size:9px; margin-top:2px;">Temizle</button>
+                          </div>
+                          <div>
+                            <label style="font-size:10px; font-weight:700; color:var(--muted); margin-bottom:4px; display:block;">TEKNİSYEN İMZASI</label>
+                            <canvas id="sigCanvasTech" width="200" height="80" style="width:100%; height:80px; border:1px dashed var(--line); border-radius:6px; background:#fafafa; touch-action:none; cursor:crosshair;"></canvas>
+                            <button type="button" class="text-btn" id="btnClearSigTech" style="font-size:9px; margin-top:2px;">Temizle</button>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                     <!-- Footer action bar -->
                     <div class="mob-footer-actions">
@@ -760,12 +926,41 @@
                         <label class="form-label">
                           Haşere Aktivitesi
                           <select name="pestType" id="mobInpPestType" class="form-select">
-                            <option value="none">Yok</option>
-                            <option value="mouse">Fare (Rodent)</option>
-                            <option value="rat">Sıçan (Rodent)</option>
-                            <option value="cockroach">Hamamböceği (Crawler)</option>
-                            <option value="fly">Sinek (Flying)</option>
-                            <option value="other">Diğer Haşere</option>
+                            <optgroup label="Aktivite">
+                              <option value="none">Aktivite Yok</option>
+                            </optgroup>
+                            <optgroup label="Kemirgen">
+                              <option value="mouse">Fare (Mouse)</option>
+                              <option value="rat">Sıçan (Rat)</option>
+                            </optgroup>
+                            <optgroup label="Yürüyen Haşere">
+                              <option value="german_cockroach">Alman Hamamböceği</option>
+                              <option value="oriental_cockroach">Doğu Hamamböceği</option>
+                              <option value="american_cockroach">Amerikan Hamamböceği</option>
+                              <option value="cockroach">Hamamböceği (Genel)</option>
+                              <option value="ground_beetle">Kınkanatlı</option>
+                              <option value="other_crawling">Diğer Yürüyen</option>
+                            </optgroup>
+                            <optgroup label="Uçan Haşere">
+                              <option value="house_fly">Karasinek</option>
+                              <option value="mosquito">Sivrisinek</option>
+                              <option value="fruit_fly">Meyve Sineği</option>
+                              <option value="humpback_fly">Kambur Sineği</option>
+                              <option value="small_flies">Küçük Sinek</option>
+                              <option value="wasp">Arı</option>
+                              <option value="fly">Sinek (Genel)</option>
+                            </optgroup>
+                            <optgroup label="Depo Zararlıları">
+                              <option value="indian_meal_moth">Kuru Meyve Güvesi</option>
+                              <option value="flour_moth">Değirmen Güvesi</option>
+                              <option value="grain_moth">Arpa Güvesi</option>
+                              <option value="flour_beetle">Un / Kırma Biti</option>
+                              <option value="grain_weevil">Buğday/Pirinç Biti</option>
+                              <option value="cigarette_beetle">Tatlı Kurt</option>
+                            </optgroup>
+                            <optgroup label="Diğer">
+                              <option value="other">Diğer Haşere</option>
+                            </optgroup>
                           </select>
                         </label>
 
@@ -779,8 +974,12 @@
                           <select name="status" id="mobInpStatus" class="form-select">
                             <option value="clean">Temiz & Sağlam</option>
                             <option value="activity">Aktivite Var</option>
-                            <option value="damaged">Hasarlı / Kırık</option>
-                            <option value="missing">Kayıp / Eksik</option>
+                            <option value="damaged">Hasarlı / Kırık (KI)</option>
+                            <option value="missing">Kayıp / Eksik (KA)</option>
+                            <option value="not_accessible">Ulaşılamadı (U)</option>
+                            <option value="renewed">İstasyon Yenilendi (Y)</option>
+                            <option value="bait_changed">Yem Değişti (YD)</option>
+                            <option value="glue_changed">Yapışkan Plaka Değişti</option>
                           </select>
                         </label>
 
@@ -878,6 +1077,14 @@
     </div>
 
     <script src="https://unpkg.com/html5-qrcode"></script>
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('./service-worker.js').catch(() => {});
+        });
+      }
+    </script>
+    <script src="./state.js"></script>
     <script src="./app.js"></script>
   </body>
 </html>

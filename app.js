@@ -27,6 +27,19 @@ const initial = {
         { code:"F-01", type:"flying", x:80, y:68, checked:true, status:"activity", baitStatus:"intact", pestType:"fly", pestCount:12, notes:"Atık alanı yakınındaki cihaz kontrol edilmeli." },
         { code:"ILT-01", type:"insect_light_trap", x:35, y:48, checked:true, status:"damaged", baitStatus:"missing", pestType:"none", pestCount:0, notes:"UV ampulü patlak, yenilenmesi gerek." },
         { code:"ILT-02", type:"insect_light_trap", x:65, y:52, checked:false, status:"unchecked", baitStatus:"intact", pestType:"none", pestCount:0, notes:"" }
+      ],
+      serviceScope: {
+        outdoorRodent: { frequency: 2, unit: 'ay', seasonNote: '' },
+        indoorRodent: { frequency: 4, unit: 'ay', seasonNote: '' },
+        crawlingPest: { frequency: 4, unit: 'ay', seasonNote: '' },
+        flyingPest: { frequency: 4, unit: 'ay', seasonNote: 'Nisan-Ekim: 4/ay, Kasım-Mart: 2/ay' },
+        storagePest: { frequency: 4, unit: 'ay', seasonNote: '' }
+      },
+      contract: { taxOffice: 'Gebze VD', taxNo: '1234567890', annualPrice: 48000, monthlyPrice: 4000, extraVisitPrice: 750, emergencyCallPrice: 1500, period: '01.01.2026 - 31.12.2026' },
+      chemicalsUsed: [
+        { id: 'cu1', chemicalId: 'ch1', date: '12 Tem 2026', quantity: '250 ml', area: '500 m²', tech: 'Ayşe Demir', notes: 'Dış çevre rezidüel bariyer uygulaması' },
+        { id: 'cu2', chemicalId: 'ch3', date: '12 Tem 2026', quantity: '400 gr', area: '20 istasyon', tech: 'Ayşe Demir', notes: 'Kemirgen yem istasyonlarına yem yerleştirme' },
+        { id: 'cu3', chemicalId: 'ch2', date: '28 Haz 2026', quantity: '35 gr', area: '120 m²', tech: 'Mert Kaya', notes: 'Hammadde deposu hamamböceği jel uygulaması' }
       ]
     },
     { 
@@ -136,10 +149,10 @@ const initial = {
     }
   ],
   work: [
-    {id:"WO-2048", siteId:"s1", title:"Kemirgen aktivitesi — acil inceleme", site:"Acme Foods · Gebze Üretim Tesisi", priority:"critical", type:"Kritik bulgu", due:"Bugün, 14:30", tech:"Ayşe Demir", description:"R-12 yem istasyonunda yüksek kemirgen aktivitesi tespit edildi. Alanın incelenmesi ve aksiyon planının kayıt altına alınması gerekiyor."},
-    {id:"WO-2047", siteId:"s2", title:"Yükleme alanı istasyon kontrolü", site:"Kuzey Lojistik · Hadımköy DM", priority:"critical", type:"Kritik bulgu", due:"Bugün, 16:00", tech:"Mert Kaya", description:"Yükleme rampası çevresindeki üç istasyon için kontrol ve yenileme servisi planlandı."},
-    {id:"WO-2045", siteId:"s3", title:"Periyodik saha servisi", site:"Aster Hospital · Ataşehir Kampüsü", priority:"high", type:"Planlı servis", due:"14 Tem, 09:00", tech:"Ece Yılmaz", description:"Aylık sözleşme kapsamındaki rutin saha servisi ve dijital istasyon denetimi."},
-    {id:"WO-2042", siteId:"s4", title:"Müşteri talebi — uçan haşere", site:"Bora Retail · Levent Merkez", priority:"high", type:"Müşteri talebi", due:"15 Tem, 11:00", tech:"Can Öztürk", description:"Müşteri tarafından bildirilen uçan haşere aktivitesinin yerinde kontrolü."}
+    {id:"WO-2048", siteId:"s1", title:"Kemirgen aktivitesi — acil inceleme", site:"Acme Foods · Gebze Üretim Tesisi", priority:"critical", type:"Kritik bulgu", visitType:"AC", due:"Bugün, 14:30", tech:"Ayşe Demir", description:"R-12 yem istasyonunda yüksek kemirgen aktivitesi tespit edildi. Alanın incelenmesi ve aksiyon planının kayıt altına alınması gerekiyor."},
+    {id:"WO-2047", siteId:"s2", title:"Yükleme alanı istasyon kontrolü", site:"Kuzey Lojistik · Hadımköy DM", priority:"critical", type:"Kritik bulgu", visitType:"RZ", due:"Bugün, 16:00", tech:"Mert Kaya", description:"Yükleme rampası çevresindeki üç istasyon için kontrol ve yenileme servisi planlandı."},
+    {id:"WO-2045", siteId:"s3", title:"Periyodik saha servisi", site:"Aster Hospital · Ataşehir Kampüsü", priority:"high", type:"Planlı servis", visitType:"RZ", due:"14 Tem, 09:00", tech:"Ece Yılmaz", description:"Aylık sözleşme kapsamındaki rutin saha servisi ve dijital istasyon denetimi."},
+    {id:"WO-2042", siteId:"s4", title:"Müşteri talebi — uçan haşere", site:"Bora Retail · Levent Merkez", priority:"high", type:"Müşteri talebi", visitType:"ES", due:"15 Tem, 11:00", tech:"Can Öztürk", description:"Müşteri tarafından bildirilen uçan haşere aktivitesinin yerinde kontrolü."}
   ]
 };
 let state = load();
@@ -154,6 +167,104 @@ const users = {
   'ayse@insectram.com': { email: 'ayse@ladybug.com', name: 'Ayşe Demir', role: 'tech', title: 'Baş Teknisyen', avatar: 'AD' },
   'acme@client.com': { email: 'acme@client.com', name: 'Ahmet Çelik', role: 'client', title: 'Acme Gıda Yetkilisi', avatar: 'AC' }
 };
+
+// ===== PEST TAXONOMY DATABASE =====
+const pestDatabase = {
+  rodent: [
+    { code: 'F', name: 'Fare', en: 'Mouse', sci: 'Mus musculus' },
+    { code: 'S', name: 'Sıçan', en: 'Rat', sci: 'Rattus spp.' },
+    { code: '0', name: 'Aktivite Yok', en: 'No Activity', sci: '' }
+  ],
+  crawling: [
+    { code: 'ALH', name: 'Alman Hamamböceği', en: 'German Cockroach', sci: 'Blattella germanica' },
+    { code: 'DOH', name: 'Doğu Hamamböceği', en: 'Oriental Cockroach', sci: 'Blatta orientalis' },
+    { code: 'AMH', name: 'Amerikan Hamamböceği', en: 'American Cockroach', sci: 'Periplaneta americana' },
+    { code: 'K', name: 'Kınkanatlı', en: 'Ground Beetle', sci: 'Carabidae spp.' },
+    { code: 'D', name: 'Diğer Yürüyen', en: 'Other Crawling', sci: '' },
+    { code: '0', name: 'Aktivite Yok', en: 'No Activity', sci: '' }
+  ],
+  flying: [
+    { code: 'KS', name: 'Karasinek', en: 'House Fly', sci: 'Musca domestica' },
+    { code: 'SS', name: 'Sivrisinek', en: 'Mosquito', sci: 'Culicidae spp.' },
+    { code: 'MS', name: 'Meyve Sineği', en: 'Fruit Fly', sci: 'Drosophila spp.' },
+    { code: 'KMS', name: 'Kambur Sineği', en: 'Humpback Fly', sci: 'Phoridae spp.' },
+    { code: 'KUS', name: 'Küçük Sinek', en: 'Small Flies', sci: 'Diptera spp.' },
+    { code: 'ARI', name: 'Arı', en: 'Wasp', sci: 'Vespidae spp.' },
+    { code: 'KEL', name: 'Kelebek (Güve)', en: 'Moth', sci: 'Lepidoptera spp.' },
+    { code: 'D', name: 'Diğer Uçan', en: 'Other Flying', sci: '' },
+    { code: '0', name: 'Aktivite Yok', en: 'No Activity', sci: '' }
+  ],
+  storedProduct: [
+    { code: 'KMG', name: 'Kuru Meyve Güvesi', en: 'Indian Meal Moth', sci: 'Plodia interpunctella' },
+    { code: 'DG', name: 'Değirmen Güvesi', en: 'Mediterranean Flour Moth', sci: 'Ephestia kuehniella' },
+    { code: 'AG', name: 'Arpa Güvesi', en: 'Angoumois Grain Moth', sci: 'Sitotroga cerealella' },
+    { code: 'UG', name: 'Un Güvesi', en: 'Meal Moth', sci: 'Pyralis farinalis' },
+    { code: 'TG', name: 'Tütün Güvesi', en: 'Tobacco Moth', sci: 'Ephestia elutella' },
+    { code: 'UKB', name: 'Un / Kırma Biti', en: 'Flour Beetle', sci: 'Tribolium spp.' },
+    { code: 'BMP', name: 'Buğday/Mısır/Pirinç Biti', en: 'Grain Weevil', sci: 'Sitophilus spp.' },
+    { code: 'TB', name: 'Testereli Böcek', en: 'Saw-toothed Grain Beetle', sci: 'Oryzaephilus spp.' },
+    { code: 'TK', name: 'Tatlı Kurt', en: 'Cigarette Beetle', sci: 'Lasioderma spp.' },
+    { code: 'THB', name: 'Tohum Böcekleri', en: 'Bean Weevil', sci: 'Bruchus spp.' },
+    { code: 'D', name: 'Diğer Depo Zararlısı', en: 'Other Stored Product', sci: '' },
+    { code: '0', name: 'Aktivite Yok', en: 'No Activity', sci: '' }
+  ]
+};
+
+// ===== VISIT TYPES =====
+const visitTypes = [
+  { code: 'RZ', name: 'Rutin Ziyaret', en: 'Routine Visit' },
+  { code: 'TZ', name: 'Takip Ziyareti', en: 'Follow-up Visit' },
+  { code: 'AC', name: 'Acil Çağrı', en: 'Call-out' },
+  { code: 'IZ', name: 'İlaçlama Ziyareti', en: 'Pesticide Application' },
+  { code: 'ILK', name: 'İlk Ziyaret', en: 'First Visit' },
+  { code: 'ES', name: 'Ek Servis', en: 'Extra Visit' },
+  { code: '3G', name: '3. Göz Denetim', en: 'Third Eye Audit' },
+  { code: 'DZ', name: 'Dezenfeksiyon', en: 'Disinfection' }
+];
+
+// ===== EXPANDED EQUIPMENT TYPES =====
+const equipmentTypes = {
+  rodent_bait: { name: 'Kemirgen Yem İstasyonu', en: 'Rodent Bait Box', icon: '🪤', prefix: 'R' },
+  insect_detector: { name: 'Böcek Dedektörü', en: 'Insect Detector', icon: '🔍', prefix: 'BD' },
+  flying_insect_trap: { name: 'Sinek Yakalama Cihazı', en: 'Flying Insect Trap', icon: '💡', prefix: 'F' },
+  sp_insect_trap: { name: 'DZ Bit Tuzağı', en: 'S.P. Insect Trap', icon: '📌', prefix: 'DZB' },
+  catch_alive_trap: { name: 'Canlı Kapan', en: 'Catch Alive Trap', icon: '🏠', prefix: 'CK' },
+  sp_moth_trap: { name: 'DZ Güve Tuzağı', en: 'S.P. Moth Trap', icon: '🦋', prefix: 'DZG' },
+  // Legacy types mapped to new system
+  rodent: { name: 'Kemirgen Yem İstasyonu', en: 'Rodent Bait Box', icon: '🪤', prefix: 'R' },
+  crawler: { name: 'Yürüyen Haşere Monitörü', en: 'Insect Detector', icon: '🔍', prefix: 'C' },
+  flying: { name: 'Uçan Haşere Cihazı', en: 'Flying Insect Trap', icon: '💡', prefix: 'F' },
+  insect_light_trap: { name: 'UV Işıklı Cihaz (ILT)', en: 'Insect Light Trap', icon: '💡', prefix: 'ILT' }
+};
+
+// ===== EXPANDED EQUIPMENT STATUS CODES =====
+const equipmentStatusCodes = {
+  clean: { name: 'Temiz & Sağlam', code: 'OK', color: 'var(--green)' },
+  activity: { name: 'Aktivite Var', code: 'AK', color: 'var(--red)' },
+  damaged: { name: 'Hasarlı / Kırık', code: 'KI', color: 'var(--amber)' },
+  missing: { name: 'Kayıp / Eksik', code: 'KA', color: '#888' },
+  not_accessible: { name: 'Ulaşılamadı', code: 'U', color: '#6b7280' },
+  renewed: { name: 'İstasyon Yenilendi', code: 'Y', color: 'var(--blue)' },
+  bait_changed: { name: 'Yem Değişti', code: 'YD', color: 'var(--violet)' },
+  glue_changed: { name: 'Yapışkan Plaka Değişti', code: 'YPD', color: '#8b5cf6' },
+  unchecked: { name: 'Kontrol Bekliyor', code: 'KB', color: '#d4d4d8' }
+};
+
+// ===== CHEMICAL DATABASE =====
+const chemicalDatabase = [
+  { id: 'ch1', name: 'K-Othrine SC 25', activeIngredient: 'Deltamethrin', concentration: '2.5%', usage: 'Yürüyen & uçan haşere', dosagePerM2: '50 ml/100m²', waterRatio: '5 lt suya 50 ml', category: 'İnsektisit' },
+  { id: 'ch2', name: 'Goliath Gel', activeIngredient: 'Fipronil', concentration: '0.05%', usage: 'Hamamböceği jel uygulaması', dosagePerM2: '3 nokta/m²', waterRatio: 'Doğrudan uygulama', category: 'İnsektisit Jel' },
+  { id: 'ch3', name: 'Racumin Paste', activeIngredient: 'Coumatetralyl', concentration: '0.0375%', usage: 'Kemirgen yem istasyonu', dosagePerM2: '20 gr/istasyon', waterRatio: 'Doğrudan uygulama', category: 'Rodentisit' },
+  { id: 'ch4', name: 'Storm Secure', activeIngredient: 'Flocoumafen', concentration: '0.005%', usage: 'Kemirgen mücadelesi', dosagePerM2: '50 gr/istasyon', waterRatio: 'Doğrudan uygulama', category: 'Rodentisit' },
+  { id: 'ch5', name: 'Aqua K-Othrine EW 20', activeIngredient: 'Deltamethrin', concentration: '2%', usage: 'Rezidüel ilaçlama', dosagePerM2: '50 ml/100m²', waterRatio: '10 lt suya 25 ml', category: 'İnsektisit' },
+  { id: 'ch6', name: 'Icon 10 CS', activeIngredient: 'Lambda-cyhalothrin', concentration: '10%', usage: 'Dış alan bariyer ilaçlama', dosagePerM2: '100 ml/100m²', waterRatio: '10 lt suya 10 ml', category: 'İnsektisit' },
+  { id: 'ch7', name: 'Maxforce White IC', activeIngredient: 'Imidacloprid', concentration: '2.15%', usage: 'Hamamböceği jel', dosagePerM2: '3 nokta/m²', waterRatio: 'Doğrudan uygulama', category: 'İnsektisit Jel' },
+  { id: 'ch8', name: 'Cislin 2.5 UL', activeIngredient: 'Deltamethrin', concentration: '2.5%', usage: 'ULV fogger uygulama', dosagePerM2: '1 ml/m³', waterRatio: 'Doğrudan ULV', category: 'ULV İnsektisit' },
+  { id: 'ch9', name: 'Steri-Fab', activeIngredient: 'İzopropil Alkol + Phenothrin', concentration: 'Karışım', usage: 'Dezenfeksiyon & haşere', dosagePerM2: '100 ml/10m²', waterRatio: 'Doğrudan sprey', category: 'Dezenfektan' },
+  { id: 'ch10', name: 'Actellic 50 EC', activeIngredient: 'Pirimiphos-methyl', concentration: '50%', usage: 'Depo zararlıları fumigasyon', dosagePerM2: '100 ml/100m²', waterRatio: '10 lt suya 50 ml', category: 'Depo İnsektisit' },
+  { id: 'ch11', name: 'Demand CS', activeIngredient: 'Lambda-cyhalothrin', concentration: '10%', usage: 'Genel haşere mücadelesi', dosagePerM2: '50 ml/100m²', waterRatio: '10 lt suya 12.5 ml', category: 'İnsektisit' },
+  { id: 'ch12', name: 'Responsar SC', activeIngredient: 'Alfasipermetrin', concentration: '10%', usage: 'Dış çevre ilaçlama', dosagePerM2: '100 ml/100m²', waterRatio: '10 lt suya 20 ml', category: 'İnsektisit' }
+];
 
 function applyRoleAccess() {
   if (!state.currentUser) return;
@@ -264,26 +375,44 @@ let activeMobileStationCode = null;
 
 function load(){
   try {
-    const saved = JSON.parse(localStorage.getItem("ladybug-ops"));
+    const saved = window.__LADYBUG_STATE__ || JSON.parse(localStorage.getItem("ladybug-ops"));
     if (!saved) return structuredClone(initial);
     // Detect stale data missing new fields and reset
-    if (saved.sites && saved.sites[0] && !saved.sites[0].methods) {
+    if (saved.sites && saved.sites[0] && !saved.sites[0].chemicalsUsed) {
       localStorage.removeItem("ladybug-ops");
       return structuredClone(initial);
     }
-    // Initialize recommendations array for all sites if missing
-    saved.sites.forEach((s, idx) => {
+    // Initialize recommendations and new arrays for all sites if missing
+    saved.sites.forEach((s) => {
       if (!s.recommendations) {
         s.recommendations = [
           { id: "r1", desc: `${s.name} dış çevre kapı eşiğindeki conta yıpranmış, kemirgen geçişini önlemek için yenilenmeli.`, category: "BRCGS", assignee: "Tesis Bakım Departmanı", date: "10 Haz 2026", due: "25 Tem 2026", status: "open" },
           { id: "r2", desc: "Üretim holü sevkiyat rampası A-2 kapısına hava perdesi veya pvc şerit bariyer takılmalı.", category: "AIB", assignee: "Operasyon Yöneticisi", date: "05 Tem 2026", due: "10 Ağu 2026", status: "open" }
         ];
       }
+      if (!s.chemicalsUsed) s.chemicalsUsed = [];
+      if (s.serviceScope === undefined) s.serviceScope = null;
+      if (s.contract === undefined) s.contract = null;
     });
+    // Ensure all work orders have visitType
+    if (saved.work) {
+      saved.work.forEach(w => {
+        if (!w.visitType) w.visitType = 'RZ';
+      });
+    }
     return {...structuredClone(initial),...saved};
   } catch { return structuredClone(initial); }
 }
-function save(){localStorage.setItem("ladybug-ops",JSON.stringify(state))}
+ function save(){
+  localStorage.setItem("ladybug-ops",JSON.stringify(state));
+  const persistableState = structuredClone(state);
+  delete persistableState.currentUser;
+  fetch("./api/state", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(persistableState)
+  }).catch(() => {});
+}
 function toast(message){const el=$("#toast");el.textContent=message;el.classList.remove("hidden");clearTimeout(toast.t);toast.t=setTimeout(()=>el.classList.add("hidden"),3000)}
 
 function setView(view){
@@ -450,6 +579,7 @@ function renderWork(filter='all'){
       <div class="work-main"><b>${w.title}</b><p>${w.site} · ${w.id}</p></div>
       <div class="work-meta">
         <span class="status-chip ${w.completed?'healthy':w.priority}">${w.completed?'Tamamlandı':w.type}</span>
+        ${w.visitType ? `<span class="visit-type-chip" style="display:inline-block; font-size:9px; padding:2px 6px; border-radius:4px; font-weight:700; background:#f0f4ff; color:#4361a8; border:1px solid #d8e2f8; margin-left:6px;">${(visitTypes.find(v=>v.code===w.visitType)||{}).name || w.visitType}</span>` : ''}
         <small>${w.due}</small>
       </div>
     </div>
@@ -475,6 +605,7 @@ function renderTask(){
     <p>${w.description}</p>
     <div class="detail-list">
       <div><span>Tesis</span><b>${w.site.split(' · ')[1]}</b></div>
+      <div><span>Ziyaret Türü</span><b>${(visitTypes.find(v=>v.code===w.visitType)||{}).name || 'Belirtilmedi'}</b></div>
       <div><span>Atanan teknisyen</span><b>${w.tech}</b></div>
       <div><span>Hedef zaman</span><b>${w.due}</b></div>
       <div><span>İş emri</span><b>${w.id}</b></div>
@@ -643,6 +774,12 @@ function showCompanyDetail(siteId) {
 
   // Render recommendations table
   renderCompanyRecommendations(site);
+
+  // Render chemical usage tab
+  renderChemicalUsage(site);
+  
+  // Render service scope in overview
+  renderServiceScope(site);
   
   // Reset form panel
   $('#stationDetailsEmpty').classList.remove('hidden');
@@ -665,13 +802,19 @@ function switchCompanyTab(tabId) {
     map: 'paneCompMap',
     methods: 'paneCompMethods',
     files: 'paneCompFiles',
-    recommendations: 'paneCompRecommendations'
+    recommendations: 'paneCompRecommendations',
+    chemicals: 'paneCompChemicals',
+    analytics: 'paneCompAnalytics'
   };
   
   Object.entries(tabPanes).forEach(([t, id]) => {
     const pane = $(`#${id}`);
     if (pane) pane.classList.toggle('hidden', t !== tabId);
   });
+
+  if (tabId === 'analytics') {
+    renderClientAnalytics();
+  }
 }
 
 function renderCompanyMethods(site) {
@@ -770,26 +913,18 @@ function renderCompanyStationsTable(site) {
   const container = $('#compStationsTableBody');
   if (!container) return;
   
-  const typeLabels = {
-    rodent: 'Kemirgen Yem İstasyonu',
-    crawler: 'Yürüyen Haşere Monitörü',
-    flying: 'Uçan Haşere Cihazı',
-    insect_light_trap: 'UV Işıklı Cihaz (ILT)'
-  };
+  const typeLabels = {};
+  Object.entries(equipmentTypes).forEach(([key, val]) => { typeLabels[key] = val.name; });
   
-  const statusLabels = {
-    clean: 'Temiz & Sağlam',
-    activity: 'Aktivite Var',
-    damaged: 'Hasarlı',
-    missing: 'Eksik',
-    unchecked: 'Kontrol Bekliyor'
-  };
+  const statusLabels = {};
+  Object.entries(equipmentStatusCodes).forEach(([key, val]) => { statusLabels[key] = val.name; });
 
   const baitLabels = {
     intact: 'Sağlam (Tüketilmedi)',
     consumed: 'Tüketildi',
     replaced: 'Yem Yenilendi',
-    missing: 'Yem Eksik'
+    missing: 'Yem Eksik',
+    missing_bait: 'Yem Yok / Eksik'
   };
 
   const pestLabels = {
@@ -800,6 +935,12 @@ function renderCompanyStationsTable(site) {
     fly: 'Sinek',
     other: 'Diğer'
   };
+  // Pre-populate pestLabels from pestDatabase
+  Object.values(pestDatabase).forEach(category => {
+    category.forEach(p => {
+      pestLabels[p.code] = p.name;
+    });
+  });
 
   container.innerHTML = site.stations.map(s => {
     const planted = s.plantedDate || "15.01.2025";
@@ -816,8 +957,21 @@ function renderCompanyStationsTable(site) {
       else statusClass = 'warning';
     }
 
-    const pestCountDesc = s.pestCount > 0 ? ` (${s.pestCount} Adet)` : '';
-    const findings = s.checked ? `${pestLabels[s.pestType] || s.pestType}${pestCountDesc}` : '—';
+    let hasPests = s.pestCount > 0;
+    let findings = '—';
+    if (s.checked) {
+      if (s.findings && s.findings.length > 0) {
+        findings = s.findings.map(f => {
+          const name = pestLabels[f.pestCode] || f.pestCode;
+          if (f.count > 0) hasPests = true;
+          return `${name} (${f.count} Adet)`;
+        }).join(', ');
+      } else {
+        const name = pestLabels[s.pestType] || s.pestType;
+        const countDesc = s.pestCount > 0 ? ` (${s.pestCount} Adet)` : '';
+        findings = s.pestType !== 'none' ? `${name}${countDesc}` : 'Yok';
+      }
+    }
     const baitText = s.checked ? (baitLabels[s.baitStatus] || s.baitStatus) : '—';
     
     return `
@@ -829,7 +983,7 @@ function renderCompanyStationsTable(site) {
         <td><small>${lastCheck}</small></td>
         <td><b>${inspector}</b></td>
         <td><small>${baitText}</small></td>
-        <td><span class="${s.pestCount > 0 ? 'attention' : ''}">${findings}</span></td>
+        <td><span class="${hasPests ? 'attention' : ''}">${findings}</span></td>
         <td><span class="status-chip ${statusClass}">${statusText}</span></td>
       </tr>
     `;
@@ -1008,8 +1162,20 @@ function showMobileJobDetail(work) {
   const cardStations = $('#cardStationsList');
   cardStations.classList.toggle('disabled', !mobQrStarted);
   
+  const checked = site.stations.filter(s => s.checked).length;
+  const isComplete = mobQrStarted && checked === site.stations.length;
+  const cardSig = $('#cardSignature');
+  if (cardSig) {
+    cardSig.classList.toggle('disabled', !isComplete);
+  }
+  
   renderMobileMiniGrid(site);
   updateSimStepsHighlight();
+  
+  // Initialize signature canvases if unlocked
+  if (isComplete && !work.completed) {
+    initSignaturePads();
+  }
   
   $('#pageMobileRoute').classList.add('hidden');
   $('#pageMobileJobDetail').classList.remove('hidden');
@@ -1050,8 +1216,17 @@ function renderMobileMiniGrid(site) {
     return `<button class="mob-station-mini-btn ${btnClass}" data-mob-station-code="${s.code}">${s.code}</button>`;
   }).join('');
   
-  // Enable complete form button when started and at least 1 checked
-  $('#btnMobSaveForm').disabled = !mobQrStarted || checked === 0 || mobJob.completed;
+  const isComplete = mobQrStarted && checked === total;
+  const cardSig = $('#cardSignature');
+  if (cardSig) {
+    cardSig.classList.toggle('disabled', !isComplete);
+    if (isComplete && !mobJob.completed) {
+      initSignaturePads();
+    }
+  }
+  
+  // Enable complete form button when all stations checked
+  $('#btnMobSaveForm').disabled = !isComplete || mobJob.completed;
 }
 
 function showMobileMap() {
@@ -1587,15 +1762,30 @@ function modal(type) {
             </select>
           </label>
         </div>
-        <label class="form-label">
-          Görevlendirilecek Teknisyen
-          <select name="tech" class="form-select" style="height:37px; padding:0 8px; font-size:12px; border:1px solid var(--line); border-radius:7px;">
-            <option value="Ayşe Demir">Ayşe Demir (Baş Teknisyen)</option>
-            <option value="Mert Kaya">Mert Kaya (Teknisyen)</option>
-            <option value="Ece Yılmaz">Ece Yılmaz (Dezenfeksiyon Uzmanı)</option>
-            <option value="Can Öztürk">Can Öztürk (Saha Ekibi)</option>
-          </select>
-        </label>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+          <label class="form-label">
+            Görevlendirilecek Teknisyen
+            <select name="tech" class="form-select" style="height:37px; padding:0 8px; font-size:12px; border:1px solid var(--line); border-radius:7px;">
+              <option value="Ayşe Demir">Ayşe Demir (Baş Teknisyen)</option>
+              <option value="Mert Kaya">Mert Kaya (Teknisyen)</option>
+              <option value="Ece Yılmaz">Ece Yılmaz (Dezenfeksiyon Uzmanı)</option>
+              <option value="Can Öztürk">Can Öztürk (Saha Ekibi)</option>
+            </select>
+          </label>
+          <label class="form-label">
+            Ziyaret Türü
+            <select name="visitType" class="form-select" style="height:37px; padding:0 8px; font-size:12px; border:1px solid var(--line); border-radius:7px;">
+              <option value="RZ">Rutin Ziyaret</option>
+              <option value="TZ">Takip Ziyareti</option>
+              <option value="AC">Acil Çağrı / Call-out</option>
+              <option value="IZ">İlaçlama Ziyareti</option>
+              <option value="ILK">İlk Ziyaret</option>
+              <option value="ES">Ek Servis</option>
+              <option value="3G">3. Göz Denetim & Audit</option>
+              <option value="DZ">Dezenfeksiyon</option>
+            </select>
+          </label>
+        </div>
         <button type="submit" class="primary-btn" style="width:100%; justify-content:center; margin-top:10px;">＋ İş Emri Planla</button>
       </form>
     `;
@@ -1993,6 +2183,24 @@ function bind(){
         s.status = $('#mobInpStatus').value;
         s.notes = $('#mobInpNotes').value;
         
+        const localPestLabels = { none: 'Yok', mouse: 'Fare', rat: 'Sıçan', cockroach: 'Hamamböceği', fly: 'Sinek', other: 'Diğer' };
+        Object.values(pestDatabase).forEach(category => {
+          category.forEach(p => {
+            localPestLabels[p.code] = p.name;
+          });
+        });
+        
+        if (s.pestType !== 'none' && s.pestCount > 0) {
+          const pestName = localPestLabels[s.pestType] || s.pestType;
+          s.findings = [{
+            pestCode: s.pestType,
+            pestName: pestName,
+            count: s.pestCount
+          }];
+        } else {
+          s.findings = [];
+        }
+        
         s.controlledBy = mobJob.tech;
         s.lastControl = "Bugün, " + new Date().toLocaleTimeString('tr-TR', {hour: '2-digit', minute:'2-digit'});
         
@@ -2018,6 +2226,13 @@ function bind(){
       mobJob.status = 'completed';
       state.completed++;
       
+      const canvasCust = $('#sigCanvasCustomer');
+      const canvasTech = $('#sigCanvasTech');
+      if (canvasCust && canvasTech) {
+        mobJob.customerSignature = canvasCust.toDataURL();
+        mobJob.techSignature = canvasTech.toDataURL();
+      }
+      
       const site = state.sites.find(s => s.id === mobJob.siteId) || state.sites[0];
       site.last = `Bugün · ${mobJob.tech}`;
       
@@ -2038,6 +2253,27 @@ function bind(){
     const compTab = e.target.closest('[data-comp-tab]');
     if (compTab) {
       switchCompanyTab(compTab.dataset.compTab);
+      return;
+    }
+
+    // Download Client Analytics Chart
+    if (e.target.id === 'btnDownloadChart') {
+      const canvas = $('#analyticsCanvas');
+      if (canvas) {
+        const link = document.createElement('a');
+        link.download = `${activeSiteId}_trend_analizi.png`;
+        link.href = canvas.toDataURL();
+        link.click();
+        toast('Grafik PNG olarak indirildi.');
+      }
+      return;
+    }
+
+    // Analytics filter chip clicks
+    const analyticsFilter = e.target.closest('[data-analytics-filter]');
+    if (analyticsFilter) {
+      $$('[data-analytics-filter]').forEach(b => b.classList.toggle('active', b === analyticsFilter));
+      renderClientAnalytics();
       return;
     }
 
@@ -2101,6 +2337,7 @@ function bind(){
         formattedDue = `${day} ${monthStr}, ${timeStr}`;
       }
       
+      const visitType = f.get('visitType') || 'RZ';
       const newWo = {
         id: `WO-${Math.floor(2000 + Math.random() * 1000)}`,
         siteId: siteObj.id,
@@ -2108,6 +2345,7 @@ function bind(){
         site: `${siteObj.company} · ${siteObj.name}`,
         priority: priority === 'Kritik' ? 'critical' : (priority === 'Yüksek' ? 'high' : 'normal'),
         type: 'Planlı servis',
+        visitType: visitType,
         due: formattedDue,
         tech: techVal,
         description: 'Periyodik istasyon kontrolü ve genel pest control denetimi.'
@@ -2179,6 +2417,24 @@ function bind(){
       s.pestCount = parseInt(f.get('pestCount')) || 0;
       s.status = f.get('status');
       s.notes = f.get('notes');
+      
+      const localPestLabels = { none: 'Yok', mouse: 'Fare', rat: 'Sıçan', cockroach: 'Hamamböceği', fly: 'Sinek', other: 'Diğer' };
+      Object.values(pestDatabase).forEach(category => {
+        category.forEach(p => {
+          localPestLabels[p.code] = p.name;
+        });
+      });
+      
+      if (s.pestType !== 'none' && s.pestCount > 0) {
+        const pestName = localPestLabels[s.pestType] || s.pestType;
+        s.findings = [{
+          pestCode: s.pestType,
+          pestName: pestName,
+          count: s.pestCount
+        }];
+      } else {
+        s.findings = [];
+      }
       
       s.controlledBy = "Seda Kaya (Yönetici)";
       s.lastControl = "Bugün, " + new Date().toLocaleTimeString('tr-TR', {hour: '2-digit', minute:'2-digit'});
@@ -2276,8 +2532,328 @@ function bind(){
       inpDue.value = '';
       toast('Standart Önleme Önerisi başarıyla kaydedildi.');
     }
+
+    // Company profile chemical form submit
+    if (e.target.id === 'companyChemicalForm') {
+      e.preventDefault();
+      if (!activeSiteId) return;
+      const site = state.sites.find(s => s.id === activeSiteId);
+      if (!site) return;
+      
+      const inpChemSelect = $('#inpChemicalSelect');
+      const inpChemQty = $('#inpChemicalQty');
+      const inpChemArea = $('#inpChemicalArea');
+      const inpChemNotes = $('#inpChemicalNotes');
+      if (!inpChemSelect || !inpChemQty || !inpChemArea || !inpChemNotes) return;
+      
+      const chemicalId = inpChemSelect.value;
+      const quantity = inpChemQty.value.trim();
+      const area = inpChemArea.value.trim();
+      const notes = inpChemNotes.value.trim();
+      
+      if (!chemicalId || !quantity || !area) return;
+      
+      const dateStr = new Date().toLocaleDateString('tr-TR', { day: '2-digit', month: 'short', year: 'numeric' });
+      const newChemUse = {
+        id: `cu${Date.now()}`,
+        chemicalId: chemicalId,
+        date: dateStr,
+        quantity: quantity,
+        area: area,
+        tech: state.currentUser ? state.currentUser.name : "Operatör",
+        notes: notes
+      };
+      
+      if (!site.chemicalsUsed) site.chemicalsUsed = [];
+      site.chemicalsUsed.unshift(newChemUse);
+      save();
+      renderChemicalUsage(site);
+      
+      inpChemSelect.value = '';
+      inpChemQty.value = '';
+      inpChemArea.value = '';
+      inpChemNotes.value = '';
+      toast('Kimyasal kullanım kaydı başarıyla eklendi.');
+    }
   });
 }
+
+function renderChemicalUsage(site) {
+  const tbody = $('#compChemicalsTableBody');
+  if (!tbody) return;
+  if (!site.chemicalsUsed) site.chemicalsUsed = [];
+  
+  const countLabel = $('#compChemicalsCount');
+  if (countLabel) countLabel.textContent = site.chemicalsUsed.length;
+  
+  tbody.innerHTML = site.chemicalsUsed.map((cu, index) => {
+    const chem = chemicalDatabase.find(c => c.id === cu.chemicalId);
+    const chemName = chem ? chem.name : 'Bilinmeyen Kimyasal';
+    const chemIngredient = chem ? chem.activeIngredient : '—';
+    const chemCategory = chem ? chem.category : '—';
+    const chemDosage = chem ? chem.dosagePerM2 : '—';
+    
+    return `
+      <tr>
+        <td><b>${chemName}</b><br><small class="text-muted">${chemIngredient}</small></td>
+        <td><span class="status-chip secondary" style="font-size:9px; font-weight:700;">${chemCategory}</span></td>
+        <td>${cu.quantity}</td>
+        <td>${cu.area}</td>
+        <td><small class="text-muted">${chemDosage}</small></td>
+        <td>${cu.tech}</td>
+        <td><small>${cu.date}</small></td>
+      </tr>
+    `;
+  }).join('') || '<tr><td colspan="7" class="empty" style="text-align:center;">Henüz kimyasal kullanım kaydı bulunmuyor.</td></tr>';
+}
+
+function renderServiceScope(site) {
+  const container = $('#compServiceScopeContainer');
+  if (!container) return;
+  if (!site.serviceScope) {
+    container.innerHTML = '<p class="text-muted" style="font-size:12px;">Bu tesis için hizmet kapsamı henüz tanımlanmadı.</p>';
+    return;
+  }
+  const scope = site.serviceScope;
+  const rows = [
+    ['Dış Alan Kemirgen Kontrolü', scope.outdoorRodent],
+    ['İç Alan Kemirgen Kontrolü', scope.indoorRodent],
+    ['Yürüyen Haşere Kontrolü', scope.crawlingPest],
+    ['Uçan Haşere Kontrolü', scope.flyingPest],
+    ['Depo Zararlıları Kontrolü', scope.storagePest]
+  ];
+  container.innerHTML = `
+    <div class="table-panel" style="border:1px solid var(--line); border-radius:8px; overflow:auto;">
+      <table>
+        <thead><tr><th>Hizmet Türü</th><th>Sıklık</th><th>Not</th></tr></thead>
+        <tbody>
+          ${rows.map(([label, data]) => {
+            if (!data) return '';
+            return `<tr><td><b>${label}</b></td><td>Ayda ${data.frequency} ziyaret</td><td><small class="text-muted">${data.seasonNote || '—'}</small></td></tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+  
+  // Render contract pricing if available
+  const pricing = $('#compPricingContainer');
+  if (pricing && site.contract) {
+    const c = site.contract;
+    pricing.innerHTML = `
+      <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:10px; margin-top:12px;">
+        <div class="metric-card" style="padding:10px; min-height:auto; display:flex; align-items:center; justify-content:center; box-shadow:none; border:1px solid var(--line); background:var(--soft);">
+          <div style="text-align:center;"><span>Yıllık Bedel</span><strong style="font-size:15px; color:var(--green); margin:0;">₺${c.annualPrice?.toLocaleString('tr-TR') || '—'}</strong></div>
+        </div>
+        <div class="metric-card" style="padding:10px; min-height:auto; display:flex; align-items:center; justify-content:center; box-shadow:none; border:1px solid var(--line); background:var(--soft);">
+          <div style="text-align:center;"><span>Aylık Bedel</span><strong style="font-size:15px; margin:0;">₺${c.monthlyPrice?.toLocaleString('tr-TR') || '—'}</strong></div>
+        </div>
+        <div class="metric-card" style="padding:10px; min-height:auto; display:flex; align-items:center; justify-content:center; box-shadow:none; border:1px solid var(--line); background:var(--soft);">
+          <div style="text-align:center;"><span>Ek Servis</span><strong style="font-size:15px; margin:0;">₺${c.extraVisitPrice?.toLocaleString('tr-TR') || '—'}</strong></div>
+        </div>
+        <div class="metric-card" style="padding:10px; min-height:auto; display:flex; align-items:center; justify-content:center; box-shadow:none; border:1px solid var(--line); background:var(--soft);">
+          <div style="text-align:center;"><span>Acil Çağrı</span><strong style="font-size:15px; color:var(--red); margin:0;">₺${c.emergencyCallPrice?.toLocaleString('tr-TR') || '—'}</strong></div>
+        </div>
+      </div>
+      <div style="margin-top:10px; display:flex; gap:16px; font-size:11px; color:var(--muted); justify-content:center;">
+        <span><b>Vergi Dairesi:</b> ${c.taxOffice || '—'}</span>
+        <span><b>Vergi No:</b> ${c.taxNo || '—'}</span>
+      </div>
+    `;
+  }
+}
+
+function renderClientAnalytics() {
+  const canvas = $('#analyticsCanvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return;
+  
+  const site = state.sites.find(s => s.id === activeSiteId);
+  if (!site) return;
+  
+  const activeFilterBtn = $('#analyticsFilterChips .filter-btn.active');
+  const filter = activeFilterBtn ? activeFilterBtn.dataset.analyticsFilter : 'all';
+  
+  const months = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran'];
+  let values = [];
+  
+  if (site.id === 's1') {
+    if (filter === 'all') values = [18, 22, 14, 19, 12, site.issues];
+    else if (filter === 'rodent') values = [8, 12, 6, 8, 4, site.stations.filter(s => s.type === 'rodent' && s.status === 'activity').length];
+    else if (filter === 'crawling') values = [4, 6, 5, 4, 3, site.stations.filter(s => s.type === 'crawler' && s.status === 'activity').length];
+    else if (filter === 'flying') values = [6, 4, 3, 7, 5, site.stations.filter(s => (s.type === 'flying' || s.type === 'insect_light_trap') && s.status === 'activity').length];
+    else values = [0, 0, 0, 0, 0, 0];
+  } else {
+    const scale = Math.max(2, Math.round((100 - site.score) / 3));
+    values = [scale + 4, scale + 2, scale + 5, scale + 1, scale, site.issues];
+  }
+  
+  const width = canvas.width;
+  const height = canvas.height;
+  ctx.clearRect(0, 0, width, height);
+  
+  const padding = { top: 30, right: 20, bottom: 40, left: 40 };
+  const chartWidth = width - padding.left - padding.right;
+  const chartHeight = height - padding.top - padding.bottom;
+  
+  const maxVal = Math.max(10, Math.max(...values) + 2);
+  
+  ctx.strokeStyle = '#e4e4e7';
+  ctx.lineWidth = 1;
+  ctx.fillStyle = '#71717a';
+  ctx.font = '10px Inter, sans-serif';
+  ctx.textAlign = 'right';
+  ctx.textBaseline = 'middle';
+  
+  const gridLines = 5;
+  for (let i = 0; i <= gridLines; i++) {
+    const yVal = Math.round((maxVal / gridLines) * i);
+    const y = padding.top + chartHeight - (yVal / maxVal) * chartHeight;
+    ctx.beginPath();
+    ctx.moveTo(padding.left, y);
+    ctx.lineTo(width - padding.right, y);
+    ctx.stroke();
+    
+    ctx.fillText(yVal, padding.left - 8, y);
+  }
+  
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'top';
+  
+  const barWidth = Math.round(chartWidth / months.length) - 16;
+  const step = chartWidth / months.length;
+  
+  months.forEach((m, idx) => {
+    const val = values[idx];
+    const x = padding.left + idx * step + step / 2;
+    const yValHeight = (val / maxVal) * chartHeight;
+    const y = padding.top + chartHeight - yValHeight;
+    
+    const gradient = ctx.createLinearGradient(x - barWidth/2, y, x - barWidth/2, padding.top + chartHeight);
+    gradient.addColorStop(0, '#2563eb');
+    gradient.addColorStop(1, '#60a5fa');
+    
+    ctx.fillStyle = gradient;
+    ctx.beginPath();
+    // Support basic rect if roundRect has minor compatibility issues
+    if (ctx.roundRect) {
+      ctx.roundRect(x - barWidth/2, y, barWidth, yValHeight, [4, 4, 0, 0]);
+    } else {
+      ctx.rect(x - barWidth/2, y, barWidth, yValHeight);
+    }
+    ctx.fill();
+    
+    ctx.fillStyle = '#09090b';
+    ctx.font = 'bold 10px Inter, sans-serif';
+    ctx.fillText(val, x, y - 14);
+    
+    ctx.fillStyle = '#71717a';
+    ctx.font = '10px Inter, sans-serif';
+    ctx.fillText(m, x, padding.top + chartHeight + 8);
+  });
+  
+  const recStats = $('#recStatsContainer');
+  if (recStats) {
+    const recs = site.recommendations || [];
+    const openRecs = recs.filter(r => r.status === 'open').length;
+    const closedRecs = recs.filter(r => r.status === 'resolved').length;
+    const hygiene = recs.filter(r => r.category === 'Hijyen').length;
+    const isolation = recs.filter(r => r.category === 'Yalıtım' || r.category === 'BRCGS' || r.category === 'AIB').length;
+    
+    recStats.innerHTML = `
+      <div class="metric-card" style="box-shadow:none; border:1px solid var(--line); background:var(--soft);"><div><span>Açık Öneri</span><strong>${openRecs}</strong></div></div>
+      <div class="metric-card" style="box-shadow:none; border:1px solid var(--line); background:var(--soft);"><div><span>Giderilen Öneri</span><strong>${closedRecs}</strong></div></div>
+      <div class="metric-card" style="box-shadow:none; border:1px solid var(--line); background:var(--soft);"><div><span>Hijyen Odaklı</span><strong>${hygiene}</strong></div></div>
+      <div class="metric-card" style="box-shadow:none; border:1px solid var(--line); background:var(--soft);"><div><span>Yalıtım & Fiziksel</span><strong>${isolation}</strong></div></div>
+    `;
+  }
+  
+  const chemStats = $('#chemStatsContainer');
+  if (chemStats) {
+    const chemCount = site.chemicalsUsed ? site.chemicalsUsed.length : 0;
+    const totalQty = site.chemicalsUsed ? site.chemicalsUsed.reduce((sum, cu) => {
+      const q = parseInt(cu.quantity) || 0;
+      return sum + q;
+    }, 0) : 0;
+    chemStats.innerHTML = `
+      <div class="metric-card" style="box-shadow:none; border:1px solid var(--line); background:var(--soft);"><div><span>Uygulama Sayısı</span><strong>${chemCount}</strong></div></div>
+      <div class="metric-card" style="box-shadow:none; border:1px solid var(--line); background:var(--soft);"><div><span>Toplam Sarfiyat</span><strong>${totalQty} ml/gr</strong></div></div>
+      <div class="metric-card" style="box-shadow:none; border:1px solid var(--line); background:var(--soft);"><div><span>Aktif Ürün Türü</span><strong>${site.chemicalsUsed ? [...new Set(site.chemicalsUsed.map(c => c.chemicalId))].length : 0}</strong></div></div>
+      <div class="metric-card" style="box-shadow:none; border:1px solid var(--line); background:var(--soft);"><div><span>Son Uygulama</span><strong>${site.chemicalsUsed && site.chemicalsUsed[0] ? site.chemicalsUsed[0].date : '—'}</strong></div></div>
+    `;
+  }
+}
+
+function initSignaturePads() {
+  const setupCanvas = (canvasId, clearBtnId) => {
+    const canvas = $(canvasId);
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    
+    // Clear dynamic bindings if already bound
+    if (canvas.dataset.bound === 'true') return;
+    canvas.dataset.bound = 'true';
+    
+    ctx.strokeStyle = '#09090b';
+    ctx.lineWidth = 2;
+    ctx.lineCap = 'round';
+    
+    let drawing = false;
+    
+    const getPos = (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+      return {
+        x: clientX - rect.left,
+        y: clientY - rect.top
+      };
+    };
+    
+    const startDrawing = (e) => {
+      drawing = true;
+      const pos = getPos(e);
+      ctx.beginPath();
+      ctx.moveTo(pos.x, pos.y);
+      e.preventDefault();
+    };
+    
+    const draw = (e) => {
+      if (!drawing) return;
+      const pos = getPos(e);
+      ctx.lineTo(pos.x, pos.y);
+      ctx.stroke();
+      e.preventDefault();
+    };
+    
+    const stopDrawing = () => {
+      drawing = false;
+    };
+    
+    canvas.addEventListener('mousedown', startDrawing);
+    canvas.addEventListener('mousemove', draw);
+    canvas.addEventListener('mouseup', stopDrawing);
+    canvas.addEventListener('mouseleave', stopDrawing);
+    
+    canvas.addEventListener('touchstart', startDrawing);
+    canvas.addEventListener('touchmove', draw);
+    canvas.addEventListener('touchend', stopDrawing);
+    
+    const clearBtn = $(clearBtnId);
+    if (clearBtn) {
+      clearBtn.addEventListener('click', () => {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        toast('İmza temizlendi.');
+      });
+    }
+  };
+  
+  setupCanvas('#sigCanvasCustomer', '#btnClearSigCustomer');
+  setupCanvas('#sigCanvasTech', '#btnClearSigTech');
+}
+
 bind();
 checkSession();
 render();

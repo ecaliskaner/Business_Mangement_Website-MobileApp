@@ -2,3 +2,4 @@ gemini-code-*
 .gemini/
 .system_generated/
 *.log
+data/state.json

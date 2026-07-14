@@ -4,9 +4,15 @@ Pitch-ready static MVP for a digital pest control and field operation platform.
 
 ## How to run
 
-Open `index.html` directly in a browser.
+Run the static server:
 
-No install, build step, or backend is required.
+```bash
+npm start
+```
+
+Then open the local URL printed in the terminal.
+
+You can still open `index.html` directly for a pure static preview, but the persistent demo state and offline caching work best through the local server.
 
 ## Demo flow
 
@@ -24,7 +30,7 @@ No install, build step, or backend is required.
 
 ## Scope
 
-This is a frontend MVP/prototype with mock data. It demonstrates the core product logic:
+This is a frontend MVP/prototype with mock data and a lightweight static deploy scaffold. It demonstrates the core product logic:
 
 - Admin dashboard
 - Interactive floor plan
