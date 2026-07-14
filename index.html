@@ -33,6 +33,8 @@
           <p class="nav-label">YÖNETİM</p>
           <button class="nav-item" data-view="insights"><span>↗</span> Analizler</button>
           <button class="nav-item" data-view="reports"><span>▤</span> Raporlar</button>
+          <button class="nav-item" data-view="inventory" id="navInventoryBtn"><span>📦</span> Stok & Envanter</button>
+          <button class="nav-item" data-view="finance" id="navFinanceBtn"><span>🧾</span> Finans & Fatura</button>
         </nav>
 
         <div class="sidebar-footer" id="sidebarUserProfileBlock">
@@ -166,6 +168,185 @@
         </div></section>
 
         <section id="reports" class="view"><div class="page-heading compact"><div><p class="overline">RAPORLAMA</p><h1>Hazır raporlar</h1><p>Müşterinizle paylaşılabilir, denetlenebilir operasyon çıktıları.</p></div><button class="primary-btn" id="createReport">＋ Rapor oluştur</button></div><div id="reportGrid" class="report-grid"></div></section>
+
+        <!-- Phase 2: Inventory Management View -->
+        <section id="inventory" class="view">
+          <div class="page-heading compact">
+            <div>
+              <p class="overline">DEPO & LOJİSTİK</p>
+              <h1>Stok & Envanter Yönetimi</h1>
+              <p>Depodaki biyosidal kimyasal ürünlerin miktarları, lot takip numaraları ve kritik eşik uyarıları.</p>
+            </div>
+          </div>
+
+          <div class="metric-grid" style="margin-bottom:16px;">
+            <div class="metric-card">
+              <div class="metric-icon blue">📦</div>
+              <div><span>Toplam Ürün Türü</span><strong id="invTotalProducts">0</strong></div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-icon green">✓</div>
+              <div><span>Kritik Eşik Üstü</span><strong id="invHealthyStock">0</strong></div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-icon amber">⚠</div>
+              <div><span>Eşik Altı (Kritik)</span><strong id="invCriticalStock" class="attention">0</strong></div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-icon violet">⇅</div>
+              <div><span>Son Hareket</span><strong style="font-size:12px;" id="invLastTransaction">Refill (10 lt)</strong></div>
+            </div>
+          </div>
+
+          <div style="display:grid; grid-template-columns: 1.5fr 1fr; gap:16px;">
+            <!-- Stock Levels Table -->
+            <article class="panel">
+              <p class="overline">GÜNCEL STOK SEVİYELERİ</p>
+              <div class="table-panel" style="margin-top:10px; border:1px solid var(--line); border-radius:8px; overflow:auto;">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Ürün Adı</th>
+                      <th>Lot No</th>
+                      <th>Kalan Miktar</th>
+                      <th>Kritik Eşik</th>
+                      <th>Durum</th>
+                      <th>Birim Maliyet</th>
+                    </tr>
+                  </thead>
+                  <tbody id="invStockTableBody">
+                    <!-- Dynamically populated -->
+                  </tbody>
+                </table>
+              </div>
+            </article>
+
+            <!-- Refill & Logs Panel -->
+            <div style="display:grid; gap:16px;">
+              <article class="panel">
+                <p class="overline">STOK EKLE / REFILL</p>
+                <form class="form-grid" id="invRefillForm">
+                  <label class="form-label">
+                    Kimyasal Ürün
+                    <select required name="chemicalId" id="refillChemSelect" class="form-select"></select>
+                  </label>
+                  <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+                    <label class="form-label">
+                      Miktar
+                      <input required type="number" step="any" name="quantity" placeholder="Örn: 10" class="form-input">
+                    </label>
+                    <label class="form-label">
+                      Lot Numarası
+                      <input required type="text" name="lotNo" placeholder="Örn: LOT-2026-X1" class="form-input">
+                    </label>
+                  </div>
+                  <label class="form-label">
+                    Notlar / Açıklama
+                    <input type="text" name="notes" placeholder="Örn: Merkez depo transferi" class="form-input">
+                  </label>
+                  <button type="submit" class="primary-btn" style="justify-content:center; width:100%;">＋ Stok Girişi Yap</button>
+                </form>
+              </article>
+
+              <article class="panel">
+                <p class="overline">SON STOK HAREKETLERİ</p>
+                <div class="table-panel" style="margin-top:10px; border:1px solid var(--line); border-radius:8px; max-height:220px; overflow:auto;">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Tarih</th>
+                        <th>İşlem</th>
+                        <th>Miktar</th>
+                        <th>Açıklama</th>
+                      </tr>
+                    </thead>
+                    <tbody id="invTransactionTableBody" style="font-size:11px;">
+                      <!-- Dynamically populated -->
+                    </tbody>
+                  </table>
+                </div>
+              </article>
+            </div>
+          </div>
+        </section>
+
+        <!-- Phase 2: Invoicing & Financial Operations View -->
+        <section id="finance" class="view">
+          <div class="page-heading compact">
+            <div>
+              <p class="overline">FİNANSAL VERİMLİLİK</p>
+              <h1>Finans & Fatura Yönetimi</h1>
+              <p>Müşteri sözleşme gelirleri, laboratuvar/teknisyen maliyet hesaplamaları ve otomatik fatura oluşturma.</p>
+            </div>
+          </div>
+
+          <div class="metric-grid" style="margin-bottom:16px;">
+            <div class="metric-card">
+              <div class="metric-icon green">₺</div>
+              <div><span>Toplam Gelir</span><strong id="finTotalRevenue">₺0</strong></div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-icon red">₺</div>
+              <div><span>Operasyonel Maliyet</span><strong id="finTotalCost">₺0</strong></div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-icon blue">📈</div>
+              <div><span>Net Kâr Marjı</span><strong id="finNetMargin">0%</strong></div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-icon violet">▤</div>
+              <div><span>Fatura Durumu</span><strong id="finPendingInvoices" style="font-size:13px;">0 Taslak / 0 Ödenmiş</strong></div>
+            </div>
+          </div>
+
+          <div style="display:grid; grid-template-columns: 1.6fr 0.9fr; gap:16px;">
+            <!-- Invoices List Panel -->
+            <article class="panel">
+              <div class="panel-header" style="margin-bottom:10px;">
+                <div>
+                  <p class="overline">OTOMATİK OLUŞTURULAN FATURALAR</p>
+                  <h2>Servis Sonrası Kesilen Faturalar</h2>
+                </div>
+                <div style="display:flex; gap:6px;" id="financeInvoiceFilter">
+                  <button class="filter-btn active" data-invoice-filter="all" style="height:26px; padding:0 8px; font-size:10px;">Hepsi</button>
+                  <button class="filter-btn" data-invoice-filter="paid" style="height:26px; padding:0 8px; font-size:10px;">Ödenmiş</button>
+                  <button class="filter-btn" data-invoice-filter="pending" style="height:26px; padding:0 8px; font-size:10px;">Bekleyen / Taslak</button>
+                </div>
+              </div>
+              
+              <div class="table-panel" style="border:1px solid var(--line); border-radius:8px; overflow:auto;">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Fatura No</th>
+                      <th>Tesis / Lokasyon</th>
+                      <th>Ziyaret Tarih</th>
+                      <th>Sözleşme Tutar</th>
+                      <th>Maliyet</th>
+                      <th>Kâr Marjı</th>
+                      <th>Durum</th>
+                      <th>Aksiyon</th>
+                    </tr>
+                  </thead>
+                  <tbody id="finInvoicesTableBody">
+                    <!-- Dynamically populated -->
+                  </tbody>
+                </table>
+              </div>
+            </article>
+
+            <!-- Profitability Margin Card -->
+            <article class="panel">
+              <p class="overline">OPERASYONEL KÂRLILIK MARJLARI</p>
+              <h2 style="margin-top:4px;">Tesis Bazlı Kârlılık Dağılımı</h2>
+              <p class="text-muted" style="font-size:11px; margin-bottom:12px;">Sözleşme tutarı ile laboratuvar (teknisyen) süresi ve kullanılan kimyasal maliyeti karşılaştırılır.</p>
+              
+              <div id="finProfitabilityDistribution" style="display:grid; gap:10px;">
+                <!-- Dynamically populated -->
+              </div>
+            </article>
+          </div>
+        </section>
 
         <section id="companyDetail" class="view">
           <!-- Page Header -->

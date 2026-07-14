@@ -2,6 +2,31 @@
 localStorage.removeItem("ladybug-product-demo"); localStorage.removeItem("insectram-product-demo"); localStorage.removeItem("insectram-ops");
 const initial = {
   view: "dashboard", selectedWork: "WO-2048", selectedTech: "Ayşe Demir", completed: 27,
+  inventory: [
+    { id: 'stock1', chemicalId: 'ch1', name: 'K-Othrine SC 25', lotNo: 'LOT-2026-A1', qty: 25.5, unit: 'lt', minQty: 5.0, unitCost: 350 },
+    { id: 'stock2', chemicalId: 'ch2', name: 'Goliath Gel', lotNo: 'LOT-2026-G9', qty: 120, unit: 'tüp', minQty: 20, unitCost: 450 },
+    { id: 'stock3', chemicalId: 'ch3', name: 'Racumin Paste', lotNo: 'LOT-2025-R4', qty: 85.0, unit: 'kg', minQty: 15.0, unitCost: 180 },
+    { id: 'stock4', chemicalId: 'ch4', name: 'Storm Secure', lotNo: 'LOT-2026-S2', qty: 60.0, unit: 'kg', minQty: 10.0, unitCost: 220 },
+    { id: 'stock5', chemicalId: 'ch5', name: 'Aqua K-Othrine EW 20', lotNo: 'LOT-2026-EW', qty: 40.0, unit: 'lt', minQty: 8.0, unitCost: 380 },
+    { id: 'stock6', chemicalId: 'ch6', name: 'Icon 10 CS', lotNo: 'LOT-2026-I1', qty: 15.0, unit: 'lt', minQty: 3.0, unitCost: 410 },
+    { id: 'stock7', chemicalId: 'ch7', name: 'Maxforce White IC', lotNo: 'LOT-2026-M4', qty: 90, unit: 'tüp', minQty: 15, unitCost: 390 },
+    { id: 'stock8', chemicalId: 'ch8', name: 'Cislin 2.5 UL', lotNo: 'LOT-2026-C2', qty: 30.0, unit: 'lt', minQty: 5.0, unitCost: 520 },
+    { id: 'stock9', chemicalId: 'ch9', name: 'Steri-Fab', lotNo: 'LOT-2026-SF', qty: 50.0, unit: 'lt', minQty: 10.0, unitCost: 290 }
+  ],
+  inventoryTransactions: [
+    { id: 'tx1', chemicalId: 'ch1', type: 'refill', qty: 10, unit: 'lt', date: '01 Tem 2026', notes: 'Merkez depo ikmali' },
+    { id: 'tx2', chemicalId: 'ch3', type: 'refill', qty: 25, unit: 'kg', date: '05 Tem 2026', notes: 'Toplu alım girişi' }
+  ],
+  invoices: [
+    { id: 'INV-1001', siteId: 's1', company: 'Acme Foods', name: 'Gebze Üretim Tesisi', date: '01 Tem 2026', amount: 4000, laborCost: 720, chemicalCost: 380, margin: 72.5, duration: '240 dk', status: 'paid', description: 'Temmuz 2026 Periyodik Hizmet Bedeli' },
+    { id: 'INV-1002', siteId: 's2', company: 'Kuzey Lojistik', name: 'Hadımköy Dağıtım Merkezi', date: '05 Tem 2026', amount: 4800, laborCost: 900, chemicalCost: 550, margin: 69.8, duration: '360 dk', status: 'sent', description: 'Sözleşme Kapsamı Rutin Ziyaret' }
+  ],
+  techRates: {
+    "Ayşe Demir": 180,
+    "Mert Kaya": 150,
+    "Ece Yılmaz": 160,
+    "Can Öztürk": 140
+  },
   sites: [
     { 
       id:"s1", company:"Acme Foods", name:"Gebze Üretim Tesisi", city:"Kocaeli", score:62, state:"risk", issues:3, last:"12 Tem · Ayşe Demir", next:"Bugün, 14:30", color:"#e8d8c7",
@@ -157,7 +182,7 @@ const initial = {
 };
 let state = load();
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
-const names = { dashboard:"Genel bakış", sites:"Tesisler", work:"İş emirleri", team:"Ekip & rota", insights:"Analizler", reports:"Raporlar", companyDetail:"Tesis Detayı & Profil", mobileSim:"Mobil Uygulama" };
+const names = { dashboard:"Genel bakış", sites:"Tesisler", work:"İş emirleri", team:"Ekip & rota", insights:"Analizler", reports:"Raporlar", companyDetail:"Tesis Detayı & Profil", mobileSim:"Mobil Uygulama", inventory:"Stok & Envanter", finance:"Finans & Fatura" };
 const stateLabel = {risk:"Riskli",watch:"İzlenmeli",healthy:"Sağlıklı"};
 
 const users = {
@@ -252,18 +277,18 @@ const equipmentStatusCodes = {
 
 // ===== CHEMICAL DATABASE =====
 const chemicalDatabase = [
-  { id: 'ch1', name: 'K-Othrine SC 25', activeIngredient: 'Deltamethrin', concentration: '2.5%', usage: 'Yürüyen & uçan haşere', dosagePerM2: '50 ml/100m²', waterRatio: '5 lt suya 50 ml', category: 'İnsektisit' },
-  { id: 'ch2', name: 'Goliath Gel', activeIngredient: 'Fipronil', concentration: '0.05%', usage: 'Hamamböceği jel uygulaması', dosagePerM2: '3 nokta/m²', waterRatio: 'Doğrudan uygulama', category: 'İnsektisit Jel' },
-  { id: 'ch3', name: 'Racumin Paste', activeIngredient: 'Coumatetralyl', concentration: '0.0375%', usage: 'Kemirgen yem istasyonu', dosagePerM2: '20 gr/istasyon', waterRatio: 'Doğrudan uygulama', category: 'Rodentisit' },
-  { id: 'ch4', name: 'Storm Secure', activeIngredient: 'Flocoumafen', concentration: '0.005%', usage: 'Kemirgen mücadelesi', dosagePerM2: '50 gr/istasyon', waterRatio: 'Doğrudan uygulama', category: 'Rodentisit' },
-  { id: 'ch5', name: 'Aqua K-Othrine EW 20', activeIngredient: 'Deltamethrin', concentration: '2%', usage: 'Rezidüel ilaçlama', dosagePerM2: '50 ml/100m²', waterRatio: '10 lt suya 25 ml', category: 'İnsektisit' },
-  { id: 'ch6', name: 'Icon 10 CS', activeIngredient: 'Lambda-cyhalothrin', concentration: '10%', usage: 'Dış alan bariyer ilaçlama', dosagePerM2: '100 ml/100m²', waterRatio: '10 lt suya 10 ml', category: 'İnsektisit' },
-  { id: 'ch7', name: 'Maxforce White IC', activeIngredient: 'Imidacloprid', concentration: '2.15%', usage: 'Hamamböceği jel', dosagePerM2: '3 nokta/m²', waterRatio: 'Doğrudan uygulama', category: 'İnsektisit Jel' },
-  { id: 'ch8', name: 'Cislin 2.5 UL', activeIngredient: 'Deltamethrin', concentration: '2.5%', usage: 'ULV fogger uygulama', dosagePerM2: '1 ml/m³', waterRatio: 'Doğrudan ULV', category: 'ULV İnsektisit' },
-  { id: 'ch9', name: 'Steri-Fab', activeIngredient: 'İzopropil Alkol + Phenothrin', concentration: 'Karışım', usage: 'Dezenfeksiyon & haşere', dosagePerM2: '100 ml/10m²', waterRatio: 'Doğrudan sprey', category: 'Dezenfektan' },
-  { id: 'ch10', name: 'Actellic 50 EC', activeIngredient: 'Pirimiphos-methyl', concentration: '50%', usage: 'Depo zararlıları fumigasyon', dosagePerM2: '100 ml/100m²', waterRatio: '10 lt suya 50 ml', category: 'Depo İnsektisit' },
-  { id: 'ch11', name: 'Demand CS', activeIngredient: 'Lambda-cyhalothrin', concentration: '10%', usage: 'Genel haşere mücadelesi', dosagePerM2: '50 ml/100m²', waterRatio: '10 lt suya 12.5 ml', category: 'İnsektisit' },
-  { id: 'ch12', name: 'Responsar SC', activeIngredient: 'Alfasipermetrin', concentration: '10%', usage: 'Dış çevre ilaçlama', dosagePerM2: '100 ml/100m²', waterRatio: '10 lt suya 20 ml', category: 'İnsektisit' }
+  { id: 'ch1', name: 'K-Othrine SC 25', activeIngredient: 'Deltamethrin', concentration: '2.5%', usage: 'Yürüyen & uçan haşere', dosagePerM2: '50 ml/100m²', waterRatio: '5 lt suya 50 ml', category: 'İnsektisit', unitCost: 1.5, unit: 'ml' },
+  { id: 'ch2', name: 'Goliath Gel', activeIngredient: 'Fipronil', concentration: '0.05%', usage: 'Hamamböceği jel uygulaması', dosagePerM2: '3 nokta/m²', waterRatio: 'Doğrudan uygulama', category: 'İnsektisit Jel', unitCost: 15.0, unit: 'gr' },
+  { id: 'ch3', name: 'Racumin Paste', activeIngredient: 'Coumatetralyl', concentration: '0.0375%', usage: 'Kemirgen yem istasyonu', dosagePerM2: '20 gr/istasyon', waterRatio: 'Doğrudan uygulama', category: 'Rodentisit', unitCost: 0.8, unit: 'gr' },
+  { id: 'ch4', name: 'Storm Secure', activeIngredient: 'Flocoumafen', concentration: '0.005%', usage: 'Kemirgen mücadelesi', dosagePerM2: '50 gr/istasyon', waterRatio: 'Doğrudan uygulama', category: 'Rodentisit', unitCost: 1.2, unit: 'gr' },
+  { id: 'ch5', name: 'Aqua K-Othrine EW 20', activeIngredient: 'Deltamethrin', concentration: '2%', usage: 'Rezidüel ilaçlama', dosagePerM2: '50 ml/100m²', waterRatio: '10 lt suya 25 ml', category: 'İnsektisit', unitCost: 1.8, unit: 'ml' },
+  { id: 'ch6', name: 'Icon 10 CS', activeIngredient: 'Lambda-cyhalothrin', concentration: '10%', usage: 'Dış alan bariyer ilaçlama', dosagePerM2: '100 ml/100m²', waterRatio: '10 lt suya 10 ml', category: 'İnsektisit', unitCost: 2.2, unit: 'ml' },
+  { id: 'ch7', name: 'Maxforce White IC', activeIngredient: 'Imidacloprid', concentration: '2.15%', usage: 'Hamamböceği jel', dosagePerM2: '3 nokta/m²', waterRatio: 'Doğrudan uygulama', category: 'İnsektisit Jel', unitCost: 12.0, unit: 'gr' },
+  { id: 'ch8', name: 'Cislin 2.5 UL', activeIngredient: 'Deltamethrin', concentration: '2.5%', usage: 'ULV fogger uygulama', dosagePerM2: '1 ml/m³', waterRatio: 'Doğrudan ULV', category: 'ULV İnsektisit', unitCost: 3.5, unit: 'ml' },
+  { id: 'ch9', name: 'Steri-Fab', activeIngredient: 'İzopropil Alkol + Phenothrin', concentration: 'Karışım', usage: 'Dezenfeksiyon & haşere', dosagePerM2: '100 ml/10m²', waterRatio: 'Doğrudan sprey', category: 'Dezenfektan', unitCost: 0.9, unit: 'ml' },
+  { id: 'ch10', name: 'Actellic 50 EC', activeIngredient: 'Pirimiphos-methyl', concentration: '50%', usage: 'Depo zararlıları fumigasyon', dosagePerM2: '100 ml/100m²', waterRatio: '10 lt suya 50 ml', category: 'Depo İnsektisit', unitCost: 2.5, unit: 'ml' },
+  { id: 'ch11', name: 'Demand CS', activeIngredient: 'Lambda-cyhalothrin', concentration: '10%', usage: 'Genel haşere mücadelesi', dosagePerM2: '50 ml/100m²', waterRatio: '10 lt suya 12.5 ml', category: 'İnsektisit', unitCost: 2.0, unit: 'ml' },
+  { id: 'ch12', name: 'Responsar SC', activeIngredient: 'Alfasipermetrin', concentration: '10%', usage: 'Dış çevre ilaçlama', dosagePerM2: '100 ml/100m²', waterRatio: '10 lt suya 20 ml', category: 'İnsektisit', unitCost: 1.6, unit: 'ml' }
 ];
 
 function applyRoleAccess() {
@@ -378,7 +403,7 @@ function load(){
     const saved = window.__LADYBUG_STATE__ || JSON.parse(localStorage.getItem("ladybug-ops"));
     if (!saved) return structuredClone(initial);
     // Detect stale data missing new fields and reset
-    if (saved.sites && saved.sites[0] && !saved.sites[0].chemicalsUsed) {
+    if (!saved.inventory || (saved.sites && saved.sites[0] && !saved.sites[0].chemicalsUsed)) {
       localStorage.removeItem("ladybug-ops");
       return structuredClone(initial);
     }
@@ -677,6 +702,8 @@ function render(){
   renderInsights();
   renderReports();
   renderAiPredictions();
+  renderInventory();
+  renderFinance();
   setView(state.view);
   applyRoleAccess();
 }
@@ -2107,6 +2134,7 @@ function bind(){
           mobQrStarted = true;
           mobJob.status = 'started_by_first_qr';
           mobJob.realWorkStartedAt = new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+          mobJob.startedTimestamp = Date.now();
           save();
           showMobileJobDetail(mobJob);
           addTelemetryLog(`İLK QR OKUTULDU: ${scannedCode} barkodu ile gerçek mesai başlangıcı tescil edildi!`);
@@ -2236,6 +2264,53 @@ function bind(){
       const site = state.sites.find(s => s.id === mobJob.siteId) || state.sites[0];
       site.last = `Bugün · ${mobJob.tech}`;
       
+      // Calculate visit duration (simulated for quick demo clicks)
+      const durationMs = mobJob.startedTimestamp ? (Date.now() - mobJob.startedTimestamp) : 0;
+      let durationMin = Math.round(durationMs / 60000);
+      if (durationMin < 5) durationMin = 45; // simulate realistic duration for demo
+      mobJob.duration = `${durationMin} dk`;
+      
+      // Calculate costs
+      const techRate = state.techRates[mobJob.tech] || 150;
+      const laborCost = Math.round((durationMin / 60) * techRate);
+      
+      let chemicalCost = 0;
+      const todayStr = new Date().toLocaleDateString('tr-TR', { day: '2-digit', month: 'short' });
+      const siteChems = site.chemicalsUsed || [];
+      siteChems.forEach(cu => {
+        if (cu.tech === mobJob.tech && (cu.date.includes('Bugün') || cu.date.includes(todayStr))) {
+          const chem = chemicalDatabase.find(c => c.id === cu.chemicalId);
+          if (chem) {
+            const qty = parseFloat(cu.quantity.replace(/[^\d\.]/g, '')) || 0;
+            chemicalCost += Math.round(qty * chem.unitCost);
+          }
+        }
+      });
+      if (chemicalCost === 0) chemicalCost = 220; // baseline chemical cost
+      
+      const billingAmount = site.contract ? site.contract.monthlyPrice : 3500;
+      const profit = billingAmount - (laborCost + chemicalCost);
+      const margin = Math.round((profit / billingAmount) * 100);
+      
+      // Auto-generate invoice draft
+      const newInvoice = {
+        id: `INV-${Math.floor(1000 + Math.random() * 9000)}`,
+        siteId: site.id,
+        company: site.company,
+        name: site.name,
+        date: new Date().toLocaleDateString('tr-TR', { day: '2-digit', month: 'short', year: 'numeric' }),
+        amount: billingAmount,
+        laborCost: laborCost,
+        chemicalCost: chemicalCost,
+        margin: margin,
+        duration: `${durationMin} dk`,
+        status: 'draft',
+        description: `${mobJob.visitType ? (visitTypes.find(v=>v.code===mobJob.visitType)||{}).name : 'Rutin'} Servis Faturası`
+      };
+      
+      if (!state.invoices) state.invoices = [];
+      state.invoices.unshift(newInvoice);
+      
       recalculateSiteStats(site);
       save();
       
@@ -2274,6 +2349,41 @@ function bind(){
     if (analyticsFilter) {
       $$('[data-analytics-filter]').forEach(b => b.classList.toggle('active', b === analyticsFilter));
       renderClientAnalytics();
+      return;
+    }
+
+    // Invoice status actions
+    const sendInvoiceBtn = e.target.closest('.send-invoice-btn');
+    if (sendInvoiceBtn) {
+      const invId = sendInvoiceBtn.dataset.invoiceId;
+      const inv = state.invoices.find(i => i.id === invId);
+      if (inv) {
+        inv.status = 'sent';
+        save();
+        renderFinance();
+        toast(`Fatura ${invId} müşteriye başarıyla gönderildi.`);
+      }
+      return;
+    }
+
+    const payInvoiceBtn = e.target.closest('.pay-invoice-btn');
+    if (payInvoiceBtn) {
+      const invId = payInvoiceBtn.dataset.invoiceId;
+      const inv = state.invoices.find(i => i.id === invId);
+      if (inv) {
+        inv.status = 'paid';
+        save();
+        renderFinance();
+        toast(`Fatura ${invId} ödendi olarak işaretlendi.`);
+      }
+      return;
+    }
+
+    // Invoice status filters
+    const invFilter = e.target.closest('[data-invoice-filter]');
+    if (invFilter) {
+      $$('[data-invoice-filter]').forEach(b => b.classList.toggle('active', b === invFilter));
+      renderFinance();
       return;
     }
 
@@ -2566,6 +2676,10 @@ function bind(){
       
       if (!site.chemicalsUsed) site.chemicalsUsed = [];
       site.chemicalsUsed.unshift(newChemUse);
+      
+      // Auto-deduct stock from inventory
+      deductStock(chemicalId, quantity);
+      
       save();
       renderChemicalUsage(site);
       
@@ -2573,7 +2687,56 @@ function bind(){
       inpChemQty.value = '';
       inpChemArea.value = '';
       inpChemNotes.value = '';
-      toast('Kimyasal kullanım kaydı başarıyla eklendi.');
+    }
+
+    // Stock Refill Form submit
+    if (e.target.id === 'invRefillForm') {
+      e.preventDefault();
+      const f = new FormData(e.target);
+      const chemicalId = f.get('chemicalId');
+      const quantity = parseFloat(f.get('quantity')) || 0;
+      const lotNo = f.get('lotNo').trim();
+      const notes = f.get('notes').trim() || 'Depo stok girişi';
+      
+      if (!chemicalId || quantity <= 0 || !lotNo) return;
+      
+      if (!state.inventory) state.inventory = [];
+      if (!state.inventoryTransactions) state.inventoryTransactions = [];
+      
+      const item = state.inventory.find(i => i.chemicalId === chemicalId);
+      if (item) {
+        item.qty = Math.round((item.qty + quantity) * 10) / 10;
+        item.lotNo = lotNo;
+      } else {
+        const chemInfo = chemicalDatabase.find(c => c.id === chemicalId);
+        state.inventory.push({
+          id: `stock${Date.now()}`,
+          chemicalId: chemicalId,
+          name: chemInfo ? chemInfo.name : 'Yeni Kimyasal',
+          lotNo: lotNo,
+          qty: quantity,
+          unit: chemInfo ? chemInfo.unit : 'kg',
+          minQty: 5.0,
+          unitCost: chemInfo ? chemInfo.unitCost : 100
+        });
+      }
+      
+      const dateStr = new Date().toLocaleDateString('tr-TR', { day: '2-digit', month: 'short', year: 'numeric' });
+      state.inventoryTransactions.unshift({
+        id: `tx${Date.now()}`,
+        chemicalId: chemicalId,
+        type: 'refill',
+        qty: quantity,
+        unit: (chemicalDatabase.find(c => c.id === chemicalId) || {}).unit || 'lt',
+        date: dateStr,
+        notes: notes
+      });
+      
+      save();
+      renderInventory();
+      
+      e.target.reset();
+      toast('Stok girişi başarıyla tamamlandı.');
     }
   });
 }
@@ -2852,6 +3015,213 @@ function initSignaturePads() {
   
   setupCanvas('#sigCanvasCustomer', '#btnClearSigCustomer');
   setupCanvas('#sigCanvasTech', '#btnClearSigTech');
+}
+
+function deductStock(chemicalId, amountStr) {
+  if (!state.inventory) state.inventory = [];
+  if (!state.inventoryTransactions) state.inventoryTransactions = [];
+
+  const item = state.inventory.find(i => i.chemicalId === chemicalId);
+  if (!item) return;
+
+  const numVal = parseFloat(amountStr.replace(/[^\d\.]/g, '')) || 0;
+  if (numVal <= 0) return;
+
+  item.qty = Math.round((item.qty - numVal) * 10) / 10;
+  
+  const dateStr = new Date().toLocaleDateString('tr-TR', { day: '2-digit', month: 'short', year: 'numeric' });
+  state.inventoryTransactions.unshift({
+    id: `tx${Date.now()}`,
+    chemicalId: chemicalId,
+    type: 'deduct',
+    qty: numVal,
+    unit: item.unit,
+    date: dateStr,
+    notes: 'Saha uygulaması düşüşü'
+  });
+
+  save();
+  renderInventory();
+
+  // Alert if drops below warning threshold
+  if (item.qty <= item.minQty) {
+    toast(`UYARI: ${item.name} stok seviyesi kritik sınırın altına düştü!`);
+  }
+}
+function renderInventory() {
+  const tbody = $('#invStockTableBody');
+  if (!tbody) return;
+  if (!state.inventory) state.inventory = [];
+  if (!state.inventoryTransactions) state.inventoryTransactions = [];
+
+  // Update metrics
+  $('#invTotalProducts').textContent = state.inventory.length;
+  
+  const criticalCount = state.inventory.filter(item => item.qty <= item.minQty).length;
+  const healthyCount = state.inventory.length - criticalCount;
+  
+  $('#invCriticalStock').textContent = criticalCount;
+  $('#invHealthyStock').textContent = healthyCount;
+  
+  if (criticalCount > 0) {
+    $('#invCriticalStock').classList.add('attention');
+  } else {
+    $('#invCriticalStock').classList.remove('attention');
+  }
+
+  const lastTx = state.inventoryTransactions[0];
+  if (lastTx) {
+    const chemName = (chemicalDatabase.find(c => c.id === lastTx.chemicalId) || {}).name || 'Kimyasal';
+    const typeLabel = lastTx.type === 'refill' ? 'Giriş' : 'Çıkış';
+    $('#invLastTransaction').textContent = `${typeLabel}: ${chemName} (${lastTx.qty} ${lastTx.unit})`;
+  } else {
+    $('#invLastTransaction').textContent = 'İşlem Yok';
+  }
+
+  // Populate Stock table
+  tbody.innerHTML = state.inventory.map(item => {
+    const isCritical = item.qty <= item.minQty;
+    const statusText = isCritical ? 'Kritik Seviye' : 'Güvenli';
+    const statusClass = isCritical ? 'critical' : 'healthy';
+    
+    return `
+      <tr>
+        <td><b>${item.name}</b></td>
+        <td><code style="font-size:10px;">${item.lotNo || '—'}</code></td>
+        <td style="font-weight:700; color:${isCritical ? 'var(--red)' : 'var(--ink)'};">${item.qty} ${item.unit}</td>
+        <td><small class="text-muted">${item.minQty} ${item.unit}</small></td>
+        <td><span class="status-chip ${statusClass}">${statusText}</span></td>
+        <td>₺${item.unitCost} / ${item.unit}</td>
+      </tr>
+    `;
+  }).join('') || '<tr><td colspan="6" class="empty" style="text-align:center;">Depoda kayıtlı ürün bulunmuyor.</td></tr>';
+
+  // Populate Refill select dropdown options
+  const refillSelect = $('#refillChemSelect');
+  if (refillSelect && refillSelect.children.length === 0) {
+    refillSelect.innerHTML = `<option value="">-- Ürün seçin --</option>` + 
+      chemicalDatabase.map(c => `<option value="${c.id}">${c.name} (${c.category})</option>`).join('');
+  }
+
+  // Populate Transactions table
+  const txTbody = $('#invTransactionTableBody');
+  if (txTbody) {
+    txTbody.innerHTML = state.inventoryTransactions.map(tx => {
+      const chem = chemicalDatabase.find(c => c.id === tx.chemicalId);
+      const chemName = chem ? chem.name : 'Bilinmeyen';
+      const isRefill = tx.type === 'refill';
+      const badgeColor = isRefill ? 'var(--green)' : 'var(--red)';
+      const typeSign = isRefill ? '＋' : '－';
+      
+      return `
+        <tr>
+          <td><small class="text-muted">${tx.date}</small></td>
+          <td><b>${chemName}</b><br><span style="color:var(--muted); font-size:9px;">${tx.notes || ''}</span></td>
+          <td style="font-weight:700; color:${badgeColor};">${typeSign}${tx.qty} ${tx.unit}</td>
+          <td><span class="status-chip secondary" style="font-size:9px;">${isRefill ? 'İkmal' : 'Tüketim'}</span></td>
+        </tr>
+      `;
+    }).join('') || '<tr><td colspan="4" class="empty" style="text-align:center;">Henüz hareket kaydı bulunmuyor.</td></tr>';
+  }
+}
+
+function renderFinance() {
+  const tbody = $('#finInvoicesTableBody');
+  if (!tbody) return;
+  if (!state.invoices) state.invoices = [];
+  
+  // Custom filter checking
+  const activeFilterBtn = $('#financeInvoiceFilter .filter-btn.active');
+  const filter = activeFilterBtn ? activeFilterBtn.dataset.invoiceFilter : 'all';
+  
+  const filteredInvoices = state.invoices.filter(inv => {
+    if (filter === 'paid') return inv.status === 'paid';
+    if (filter === 'pending') return inv.status === 'sent' || inv.status === 'draft';
+    return true;
+  });
+
+  // Calculate metrics
+  const totalRevenue = state.invoices.filter(inv => inv.status !== 'draft').reduce((sum, inv) => sum + inv.amount, 0);
+  const totalCost = state.invoices.filter(inv => inv.status !== 'draft').reduce((sum, inv) => sum + (inv.laborCost + inv.chemicalCost), 0);
+  const netMargin = totalRevenue > 0 ? Math.round(((totalRevenue - totalCost) / totalRevenue) * 100) : 0;
+  const draftCount = state.invoices.filter(inv => inv.status === 'draft').length;
+  const paidCount = state.invoices.filter(inv => inv.status === 'paid').length;
+
+  $('#finTotalRevenue').textContent = `₺${totalRevenue.toLocaleString('tr-TR')}`;
+  $('#finTotalCost').textContent = `₺${totalCost.toLocaleString('tr-TR')}`;
+  $('#finNetMargin').textContent = `${netMargin}%`;
+  $('#finPendingInvoices').textContent = `${draftCount} Taslak / ${paidCount} Ödenmiş`;
+
+  // Draw Invoice Rows
+  tbody.innerHTML = filteredInvoices.map(inv => {
+    const isPaid = inv.status === 'paid';
+    const isDraft = inv.status === 'draft';
+    const statusClass = isPaid ? 'healthy' : (isDraft ? 'warning' : 'blue');
+    const statusText = isPaid ? 'Ödendi' : (isDraft ? 'Taslak' : 'Gönderildi');
+    
+    let actionBtn = '';
+    if (isDraft) {
+      actionBtn = `<button class="text-btn send-invoice-btn" data-invoice-id="${inv.id}" style="padding:0; font-size:10px; font-weight:700; color:var(--blue);">Gönder ✈</button>`;
+    } else if (inv.status === 'sent') {
+      actionBtn = `<button class="text-btn pay-invoice-btn" data-invoice-id="${inv.id}" style="padding:0; font-size:10px; font-weight:700; color:var(--green);">Öde 💸</button>`;
+    } else {
+      actionBtn = `<span style="color:var(--muted); font-size:10px;">Tamamlandı</span>`;
+    }
+
+    return `
+      <tr>
+        <td><b>${inv.id}</b></td>
+        <td><b>${inv.company}</b><br><small class="text-muted">${inv.name}</small></td>
+        <td><small>${inv.date}</small></td>
+        <td><b>₺${inv.amount.toLocaleString('tr-TR')}</b></td>
+        <td><small class="text-muted">₺${(inv.laborCost + inv.chemicalCost).toLocaleString('tr-TR')}</small></td>
+        <td style="font-weight:700; color:${inv.margin < 50 ? 'var(--red)' : 'var(--green)'};">${inv.margin}%</td>
+        <td><span class="status-chip ${statusClass}">${statusText}</span></td>
+        <td>${actionBtn}</td>
+      </tr>
+    `;
+  }).join('') || '<tr><td colspan="8" class="empty" style="text-align:center;">Eşleşen fatura kaydı bulunmuyor.</td></tr>';
+
+  // Draw Profitability Margin Bar lists for each site
+  const marginContainer = $('#finProfitabilityDistribution');
+  if (marginContainer) {
+    marginContainer.innerHTML = state.sites.map(s => {
+      // Calculate avg margin for this site
+      const siteInvs = state.invoices.filter(i => i.siteId === s.id);
+      let avgMargin = 0;
+      let costText = 'Hizmet maliyeti yok';
+      if (siteInvs.length > 0) {
+        const sumMargin = siteInvs.reduce((sum, i) => sum + i.margin, 0);
+        avgMargin = Math.round(sumMargin / siteInvs.length);
+        const sumCost = siteInvs.reduce((sum, i) => sum + (i.laborCost + i.chemicalCost), 0);
+        costText = `Ort. Maliyet: ₺${Math.round(sumCost / siteInvs.length)}`;
+      } else {
+        // Fallback calculations using monthlyPrice
+        if (s.contract) {
+          avgMargin = 75; // typical default
+          costText = `Ort. Maliyet: ₺${Math.round(s.contract.monthlyPrice * 0.25)}`;
+        }
+      }
+      
+      const barColor = avgMargin >= 65 ? 'var(--green)' : (avgMargin >= 40 ? 'var(--amber)' : 'var(--red)');
+      
+      return `
+        <div style="background:var(--soft); padding:10px; border:1px solid var(--line); border-radius:6px;">
+          <div style="display:flex; justify-content:space-between; font-size:11px; margin-bottom:4px;">
+            <b>${s.company}</b>
+            <span style="font-weight:700; color:${barColor};">${avgMargin}% Kâr</span>
+          </div>
+          <div style="height:6px; background:#e4e4e7; border-radius:3px; overflow:hidden;">
+            <div style="height:100%; width:${avgMargin}%; background:${barColor}; border-radius:3px;"></div>
+          </div>
+          <div style="display:flex; justify-content:space-between; font-size:9px; color:var(--muted); margin-top:2px;">
+            <span>Aylık Fatura: ₺${s.contract ? s.contract.monthlyPrice.toLocaleString('tr-TR') : '—'}</span>
+            <span>${costText}</span>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
 }
 
 bind();
