@@ -490,7 +490,8 @@ function renderDashboard(){
   $('#riskList').innerHTML=riskRows(); 
   $('#criticalMetric').textContent=state.sites.reduce((n,s)=>n+s.issues,0);
   $('#completedMetric').textContent=state.completed; 
-  $('#workCompleted').textContent=state.completed; 
+  const workComp = $('#workCompleted');
+  if (workComp) workComp.textContent=state.completed; 
   
   $('#activityFeed').innerHTML=[
     ['done','✓','Servis raporu onaylandı','Novatek · Çayırova Ar-Ge Merkezi','10:42', 's5'],
