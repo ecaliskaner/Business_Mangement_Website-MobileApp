@@ -448,8 +448,16 @@ function setView(view){
   $('#pageCrumb').textContent=names[view] || "Genel bakış";
   window.scrollTo({top:0,behavior:'smooth'});
   
-  if (view === 'mobileSim') {
+  if (view === 'sites') {
+    renderSites();
+  } else if (view === 'work') {
+    renderWork();
+  } else if (view === 'mobileSim') {
     renderMobileRoute();
+  } else if (view === 'inventory') {
+    renderInventory();
+  } else if (view === 'finance') {
+    renderFinance();
   }
 }
 
@@ -547,9 +555,25 @@ function renderDashboard(){
 
 function renderSites(){
   const query=$('#siteSearch')?.value.toLocaleLowerCase('tr')||'';
-  const filter=$('.filter-btn.active')?.dataset.siteFilter||'all';
+  const filter=$('[data-site-filter].active')?.dataset.siteFilter||'all';
   
   state.sites.forEach(recalculateSiteStats);
+  
+  // Calculate dynamic filter counts
+  const totalCount = state.sites.length;
+  const riskCount = state.sites.filter(s => s.state === 'risk').length;
+  const watchCount = state.sites.filter(s => s.state === 'watch').length;
+  const healthyCount = state.sites.filter(s => s.state === 'healthy').length;
+  
+  // Update button counters in DOM dynamically
+  const allBtn = $('[data-site-filter="all"] b');
+  if (allBtn) allBtn.textContent = totalCount;
+  const riskBtn = $('[data-site-filter="risk"] b');
+  if (riskBtn) riskBtn.textContent = riskCount;
+  const watchBtn = $('[data-site-filter="watch"] b');
+  if (watchBtn) watchBtn.textContent = watchCount;
+  const healthyBtn = $('[data-site-filter="healthy"] b');
+  if (healthyBtn) healthyBtn.textContent = healthyCount;
   
   const sites=state.sites.filter(s=>(filter==='all'||s.state===filter)&&(`${s.company} ${s.name}`.toLocaleLowerCase('tr').includes(query)));
   
