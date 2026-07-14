@@ -324,6 +324,7 @@ function applyRoleAccess() {
     $('#companyRecommendationForm')?.classList.remove('hidden');
     $('#adminInspectionForm')?.classList.remove('hidden');
     $('#printStationQrBtn')?.classList.remove('hidden');
+    $('#btnEditSiteContract')?.classList.remove('hidden');
   } 
   else if (role === 'tech') {
     $$('.sidebar .nav button').forEach(b => {
@@ -340,6 +341,7 @@ function applyRoleAccess() {
     $('#companyRecommendationForm')?.classList.add('hidden');
     $('#adminInspectionForm')?.classList.remove('hidden');
     $('#printStationQrBtn')?.classList.add('hidden');
+    $('#btnEditSiteContract')?.classList.add('hidden');
     
     if (state.view !== 'work' && state.view !== 'mobileSim') {
       setView('work');
@@ -361,6 +363,7 @@ function applyRoleAccess() {
     $('#companyRecommendationForm')?.classList.add('hidden');
     $('#adminInspectionForm')?.classList.add('hidden');
     $('#printStationQrBtn')?.classList.add('hidden');
+    $('#btnEditSiteContract')?.classList.add('hidden');
   }
 }
 
@@ -835,9 +838,9 @@ function showCompanyDetail(siteId) {
   const contractPeriodEl = $('#compContractPeriod');
   const serviceFrequencyEl = $('#compServiceFrequency');
   const addressEl = $('#compAddress');
-  if (contractPeriodEl) contractPeriodEl.textContent = site.id === 's1' ? '01.01.2026 - 31.12.2026' : (site.id === 's2' ? '15.02.2026 - 15.02.2027' : '01.03.2026 - 01.03.2027');
-  if (serviceFrequencyEl) serviceFrequencyEl.textContent = site.id === 's1' ? '15 Günde Bir (Ayda 2 Servis)' : (site.id === 's3' ? 'Haftalık (Ayda 4 Servis)' : 'Aylık Periyodik Koruma');
-  if (addressEl) addressEl.textContent = site.id === 's1' ? 'Gebze Organize Sanayi Bölgesi, Kocaeli' : (site.id === 's2' ? 'Hadımköy Nakliyeciler Sitesi, İstanbul' : 'Ataşehir Sağlık Kampüsü, İstanbul');
+  if (contractPeriodEl) contractPeriodEl.textContent = (site.contract && site.contract.period) || (site.id === 's1' ? '01.01.2026 - 31.12.2026' : (site.id === 's2' ? '15.02.2026 - 15.02.2027' : '01.03.2026 - 01.03.2027'));
+  if (serviceFrequencyEl) serviceFrequencyEl.textContent = site.serviceFrequency || (site.id === 's1' ? '15 Günde Bir (Ayda 2 Servis)' : (site.id === 's3' ? 'Haftalık (Ayda 4 Servis)' : 'Aylık Periyodik Koruma'));
+  if (addressEl) addressEl.textContent = site.address || (site.id === 's1' ? 'Gebze Organize Sanayi Bölgesi, Kocaeli' : (site.id === 's2' ? 'Hadımköy Nakliyeciler Sitesi, İstanbul' : 'Ataşehir Sağlık Kampüsü, İstanbul'));
   
   // Tab 2: Map Stats
   const checkedClean = site.stations.filter(s => s.checked && s.status === 'clean').length;
@@ -1813,16 +1816,18 @@ function openReportModal(reportId) {
   modal.classList.remove('hidden');
 }
 
-function modal(type) {
+function modal(type, siteId = null) {
   const content = $('#modalContent');
   const modalEl = $('#modal');
   if (!content || !modalEl) return;
   
   if (type === 'site') {
     content.innerHTML = `
-      <h2>Yeni Tesis / Firma Ekle</h2>
-      <p class="text-muted">Portföyünüze yeni bir müşteri lokasyonu tanımlayın.</p>
-      <form class="form-grid" id="createSite">
+      <h2>Yeni Tesis & Sözleşme Ekle</h2>
+      <p class="text-muted" style="margin-bottom:12px;">Portföyünüze yeni bir müşteri lokasyonu, sözleşme bedeli ve periyotları tanımlayın.</p>
+      
+      <form class="form-grid" id="createSite" style="max-height:480px; overflow-y:auto; padding-right:6px; display:grid; gap:12px; grid-template-columns: 1fr 1fr;">
+        <div style="grid-column: span 2; font-weight:700; font-size:11px; color:var(--muted); border-bottom:1px solid var(--line); padding-bottom:4px; text-transform:uppercase;">FİRMA VE LOKASYON TANIMI</div>
         <label class="form-label">
           Firma Adı (Müşteri)
           <input required type="text" name="company" placeholder="Örn: Acme Foods" class="form-input">
@@ -1831,11 +1836,181 @@ function modal(type) {
           Tesis / Lokasyon Adı
           <input required type="text" name="siteName" placeholder="Örn: Gebze Üretim Tesisi" class="form-input">
         </label>
-        <label class="form-label">
+        <label class="form-label" style="grid-column: span 2;">
           Bulunduğu Şehir
           <input required type="text" name="city" placeholder="Örn: Kocaeli" class="form-input">
         </label>
-        <button type="submit" class="primary-btn" style="width:100%; justify-content:center; margin-top:10px;">＋ Tesis Kaydet</button>
+        
+        <div style="grid-column: span 2; font-weight:700; font-size:11px; color:var(--muted); border-bottom:1px solid var(--line); padding-bottom:4px; text-transform:uppercase; margin-top:6px;">MÜŞTERİ YETKİLİ BİLGİLERİ</div>
+        <label class="form-label">
+          Yetkili Temsilci
+          <input required type="text" name="contactName" placeholder="Örn: Ahmet Yılmaz" class="form-input">
+        </label>
+        <label class="form-label">
+          İletişim Telefonu
+          <input required type="text" name="contactPhone" placeholder="Örn: +90 532 123 4567" class="form-input">
+        </label>
+        <label class="form-label" style="grid-column: span 2;">
+          E-Posta Adresi
+          <input required type="email" name="contactEmail" placeholder="Örn: ahmet@acmefoods.com" class="form-input">
+        </label>
+        
+        <div style="grid-column: span 2; font-weight:700; font-size:11px; color:var(--muted); border-bottom:1px solid var(--line); padding-bottom:4px; text-transform:uppercase; margin-top:6px;">SÖZLEŞME & ADRES BİLGİLERİ</div>
+        <label class="form-label">
+          Sözleşme Kapsamı (Tarih Periyodu)
+          <input required type="text" name="contractPeriod" placeholder="Örn: 01.01.2026 - 31.12.2026" class="form-input">
+        </label>
+        <label class="form-label">
+          Hizmet Periyodu (Açıklama)
+          <input required type="text" name="serviceFrequency" placeholder="Örn: 15 Günde Bir" class="form-input">
+        </label>
+        <label class="form-label" style="grid-column: span 2;">
+          Tesis Adresi
+          <input required type="text" name="address" placeholder="Örn: Gebze Organize Sanayi Bölgesi, Kocaeli" class="form-input">
+        </label>
+        
+        <div style="grid-column: span 2; font-weight:700; font-size:11px; color:var(--muted); border-bottom:1px solid var(--line); padding-bottom:4px; text-transform:uppercase; margin-top:6px;">VERGİLENDİRME & MALİ BİLGİLER</div>
+        <label class="form-label">
+          Vergi Dairesi
+          <input type="text" name="taxOffice" placeholder="Örn: Gebze VD" class="form-input">
+        </label>
+        <label class="form-label">
+          Vergi Numarası
+          <input type="text" name="taxNo" placeholder="Örn: 1234567890" class="form-input">
+        </label>
+        
+        <label class="form-label">
+          Yıllık Bedel (₺)
+          <input required type="number" name="annualPrice" placeholder="Örn: 48000" class="form-input">
+        </label>
+        <label class="form-label">
+          Aylık Bedel (₺)
+          <input required type="number" name="monthlyPrice" placeholder="Örn: 4000" class="form-input">
+        </label>
+        <label class="form-label">
+          Ek Servis Bedeli (₺)
+          <input required type="number" name="extraVisitPrice" placeholder="Örn: 750" class="form-input">
+        </label>
+        <label class="form-label">
+          Acil Çağrı Bedeli (₺)
+          <input required type="number" name="emergencyCallPrice" placeholder="Örn: 1500" class="form-input">
+        </label>
+        
+        <div style="grid-column: span 2; font-weight:700; font-size:11px; color:var(--muted); border-bottom:1px solid var(--line); padding-bottom:4px; text-transform:uppercase; margin-top:6px;">HİZMET KAPSAMI FREKANSLARI (AYLIK HEDEF)</div>
+        <label class="form-label">
+          Dış Alan Kemirgen (Ziyaret/Ay)
+          <input required type="number" name="freqOutdoorRodent" value="2" class="form-input">
+        </label>
+        <label class="form-label">
+          İç Alan Kemirgen (Ziyaret/Ay)
+          <input required type="number" name="freqIndoorRodent" value="4" class="form-input">
+        </label>
+        <label class="form-label">
+          Yürüyen Haşere (Ziyaret/Ay)
+          <input required type="number" name="freqCrawlingPest" value="4" class="form-input">
+        </label>
+        <label class="form-label">
+          Uçan Haşere (Ziyaret/Ay)
+          <input required type="number" name="freqFlyingPest" value="4" class="form-input">
+        </label>
+        <label class="form-label" style="grid-column: span 2;">
+          Depo Zararlısı (Ziyaret/Ay)
+          <input required type="number" name="freqStoragePest" value="4" class="form-input">
+        </label>
+        
+        <button type="submit" class="primary-btn" style="grid-column: span 2; justify-content:center; margin-top:10px; height:38px;">＋ Tesis Kaydet</button>
+      </form>
+    `;
+  } else if (type === 'editSite') {
+    const s = state.sites.find(site => site.id === siteId);
+    if (!s) return;
+    
+    const sc = s.serviceScope || { outdoorRodent: { frequency: 2 }, indoorRodent: { frequency: 4 }, crawlingPest: { frequency: 4 }, flyingPest: { frequency: 4 }, storagePest: { frequency: 4 } };
+    const co = s.contract || { taxOffice: '', taxNo: '', annualPrice: 0, monthlyPrice: 0, extraVisitPrice: 0, emergencyCallPrice: 0, period: '' };
+    
+    content.innerHTML = `
+      <h2>Tesis Sözleşme & Kapsam Düzenle</h2>
+      <p class="text-muted" style="margin-bottom:12px;">${s.company} - ${s.name} sözleşme bedelleri ve periyodik hizmet kapsamları.</p>
+      
+      <form class="form-grid" id="editSiteForm" data-site-id="${s.id}" style="max-height:480px; overflow-y:auto; padding-right:6px; display:grid; gap:12px; grid-template-columns: 1fr 1fr;">
+        <div style="grid-column: span 2; font-weight:700; font-size:11px; color:var(--muted); border-bottom:1px solid var(--line); padding-bottom:4px; text-transform:uppercase;">MÜŞTERİ YETKİLİ BİLGİLERİ</div>
+        <label class="form-label">
+          Yetkili Temsilci
+          <input required type="text" name="contactName" value="${s.contact?.name || ''}" class="form-input">
+        </label>
+        <label class="form-label">
+          İletişim Telefonu
+          <input required type="text" name="contactPhone" value="${s.contact?.phone || ''}" class="form-input">
+        </label>
+        <label class="form-label" style="grid-column: span 2;">
+          E-Posta Adresi
+          <input required type="email" name="contactEmail" value="${s.contact?.email || ''}" class="form-input">
+        </label>
+        
+        <div style="grid-column: span 2; font-weight:700; font-size:11px; color:var(--muted); border-bottom:1px solid var(--line); padding-bottom:4px; text-transform:uppercase; margin-top:6px;">SÖZLEŞME & ADRES BİLGİLERİ</div>
+        <label class="form-label">
+          Sözleşme Kapsamı (Tarih Periyodu)
+          <input required type="text" name="contractPeriod" value="${co.period || ''}" placeholder="Örn: 01.01.2026 - 31.12.2026" class="form-input">
+        </label>
+        <label class="form-label">
+          Hizmet Periyodu (Açıklama)
+          <input required type="text" name="serviceFrequency" value="${s.serviceFrequency || '15 Günde Bir'}" placeholder="Örn: 15 Günde Bir" class="form-input">
+        </label>
+        <label class="form-label" style="grid-column: span 2;">
+          Tesis Adresi
+          <input required type="text" name="address" value="${s.address || ''}" class="form-input">
+        </label>
+        
+        <div style="grid-column: span 2; font-weight:700; font-size:11px; color:var(--muted); border-bottom:1px solid var(--line); padding-bottom:4px; text-transform:uppercase; margin-top:6px;">VERGİLENDİRME & MALİ BİLGİLER</div>
+        <label class="form-label">
+          Vergi Dairesi
+          <input type="text" name="taxOffice" value="${co.taxOffice || ''}" class="form-input">
+        </label>
+        <label class="form-label">
+          Vergi Numarası
+          <input type="text" name="taxNo" value="${co.taxNo || ''}" class="form-input">
+        </label>
+        
+        <label class="form-label">
+          Yıllık Bedel (₺)
+          <input required type="number" name="annualPrice" value="${co.annualPrice || 0}" class="form-input">
+        </label>
+        <label class="form-label">
+          Aylık Bedel (₺)
+          <input required type="number" name="monthlyPrice" value="${co.monthlyPrice || 0}" class="form-input">
+        </label>
+        <label class="form-label">
+          Ek Servis Bedeli (₺)
+          <input required type="number" name="extraVisitPrice" value="${co.extraVisitPrice || 0}" class="form-input">
+        </label>
+        <label class="form-label">
+          Acil Çağrı Bedeli (₺)
+          <input required type="number" name="emergencyCallPrice" value="${co.emergencyCallPrice || 0}" class="form-input">
+        </label>
+        
+        <div style="grid-column: span 2; font-weight:700; font-size:11px; color:var(--muted); border-bottom:1px solid var(--line); padding-bottom:4px; text-transform:uppercase; margin-top:6px;">HİZMET KAPSAMI FREKANSLARI (AYLIK HEDEF)</div>
+        <label class="form-label">
+          Dış Alan Kemirgen (Ziyaret/Ay)
+          <input required type="number" name="freqOutdoorRodent" value="${sc.outdoorRodent?.frequency || 2}" class="form-input">
+        </label>
+        <label class="form-label">
+          İç Alan Kemirgen (Ziyaret/Ay)
+          <input required type="number" name="freqIndoorRodent" value="${sc.indoorRodent?.frequency || 4}" class="form-input">
+        </label>
+        <label class="form-label">
+          Yürüyen Haşere (Ziyaret/Ay)
+          <input required type="number" name="freqCrawlingPest" value="${sc.crawlingPest?.frequency || 4}" class="form-input">
+        </label>
+        <label class="form-label">
+          Uçan Haşere (Ziyaret/Ay)
+          <input required type="number" name="freqFlyingPest" value="${sc.flyingPest?.frequency || 4}" class="form-input">
+        </label>
+        <label class="form-label" style="grid-column: span 2;">
+          Depo Zararlısı (Ziyaret/Ay)
+          <input required type="number" name="freqStoragePest" value="${sc.storagePest?.frequency || 4}" class="form-input">
+        </label>
+        
+        <button type="submit" class="primary-btn" style="grid-column: span 2; justify-content:center; margin-top:10px; height:38px;">✓ Değişiklikleri Kaydet</button>
       </form>
     `;
   } else if (type === 'work') {
@@ -2201,6 +2376,13 @@ function bind(){
     
     if(e.target.closest('#newWorkOrder')||e.target.closest('#newWorkOrderSecondary')) modal('work');
     if(e.target.closest('#addSite')) modal('site');
+    if(e.target.closest('#btnEditSiteContract')) {
+      if (activeSiteId) {
+        modal('editSite', activeSiteId);
+      } else {
+        toast("Hata: Aktif seçili tesis bulunamadı.");
+      }
+    }
     if(e.target.closest('#createReport')) modal('report');
     
     if(e.target.closest('.modal-close')||e.target.id==='modal') $('#modal').classList.add('hidden');
@@ -2842,39 +3024,129 @@ function bind(){
       toast(`İş emri oluşturuldu ve ${techVal} teknisyenine atandı.`);
     }
     
+    // Tesis & Sözleşme Düzenleme Formu
+    if(e.target.id==='editSiteForm'){
+      e.preventDefault();
+      const siteId = e.target.dataset.siteId;
+      const s = state.sites.find(site => site.id === siteId);
+      if(!s) return;
+      
+      const f = new FormData(e.target);
+      s.contact = {
+        name: f.get('contactName'),
+        phone: f.get('contactPhone'),
+        email: f.get('contactEmail')
+      };
+      s.address = f.get('address');
+      s.serviceFrequency = f.get('serviceFrequency');
+      
+      const annualPrice = parseFloat(f.get('annualPrice')) || 0;
+      const monthlyPrice = parseFloat(f.get('monthlyPrice')) || 0;
+      const extraVisitPrice = parseFloat(f.get('extraVisitPrice')) || 0;
+      const emergencyCallPrice = parseFloat(f.get('emergencyCallPrice')) || 0;
+      
+      s.contract = {
+        period: f.get('contractPeriod'),
+        taxOffice: f.get('taxOffice'),
+        taxNo: f.get('taxNo'),
+        annualPrice: annualPrice,
+        monthlyPrice: monthlyPrice,
+        extraVisitPrice: extraVisitPrice,
+        emergencyCallPrice: emergencyCallPrice
+      };
+      
+      s.serviceScope = {
+        outdoorRodent: { frequency: parseFloat(f.get('freqOutdoorRodent')) || 0, unit: 'ay' },
+        indoorRodent: { frequency: parseFloat(f.get('freqIndoorRodent')) || 0, unit: 'ay' },
+        crawlingPest: { frequency: parseFloat(f.get('freqCrawlingPest')) || 0, unit: 'ay' },
+        flyingPest: { frequency: parseFloat(f.get('freqFlyingPest')) || 0, unit: 'ay' },
+        storagePest: { frequency: parseFloat(f.get('freqStoragePest')) || 0, unit: 'ay' }
+      };
+      
+      save();
+      $('#modal').classList.add('hidden');
+      
+      showCompanyDetail(s.id);
+      renderSites();
+      toast('Tesis ve sözleşme detayları başarıyla güncellendi.');
+    }
+
     if(e.target.id==='createSite'){
       e.preventDefault();
       const f=new FormData(e.target);
+      
+      const company = f.get('company');
+      const siteName = f.get('siteName');
+      const city = f.get('city');
+      const contactName = f.get('contactName');
+      const contactPhone = f.get('contactPhone');
+      const contactEmail = f.get('contactEmail');
+      const contractPeriod = f.get('contractPeriod');
+      const serviceFrequency = f.get('serviceFrequency');
+      const address = f.get('address');
+      const taxOffice = f.get('taxOffice');
+      const taxNo = f.get('taxNo');
+      
+      const annualPrice = parseFloat(f.get('annualPrice')) || 0;
+      const monthlyPrice = parseFloat(f.get('monthlyPrice')) || 0;
+      const extraVisitPrice = parseFloat(f.get('extraVisitPrice')) || 0;
+      const emergencyCallPrice = parseFloat(f.get('emergencyCallPrice')) || 0;
+      
+      const freqOutdoorRodent = parseFloat(f.get('freqOutdoorRodent')) || 0;
+      const freqIndoorRodent = parseFloat(f.get('freqIndoorRodent')) || 0;
+      const freqCrawlingPest = parseFloat(f.get('freqCrawlingPest')) || 0;
+      const freqFlyingPest = parseFloat(f.get('freqFlyingPest')) || 0;
+      const freqStoragePest = parseFloat(f.get('freqStoragePest')) || 0;
+      
       const newSite = {
         id:Date.now()+'',
-        company:f.get('company'),
-        name:f.get('siteName'),
-        city:f.get('city'),
-        score:100,
-        state:'healthy',
-        issues:0,
-        last:'Henüz servis yok',
-        next:'Planlanacak',
-        color:'#d8e9e4',
-        sector: "Diğer Hizmet Sektörü",
-        contact: { name: "Yetkili Tanımlanmadı", phone: "—", email: "—" },
+        company: company,
+        name: siteName,
+        city: city,
+        score: 100,
+        state: 'healthy',
+        issues: 0,
+        last: 'Henüz servis yok',
+        next: 'Planlanacak',
+        color: '#d8e9e4',
+        sector: "Üretim / Gıda Sanayii",
+        address: address,
+        serviceFrequency: serviceFrequency,
+        contact: { name: contactName, phone: contactPhone, email: contactEmail },
+        contract: {
+          period: contractPeriod,
+          taxOffice: taxOffice,
+          taxNo: taxNo,
+          annualPrice: annualPrice,
+          monthlyPrice: monthlyPrice,
+          extraVisitPrice: extraVisitPrice,
+          emergencyCallPrice: emergencyCallPrice
+        },
+        serviceScope: {
+          outdoorRodent: { frequency: freqOutdoorRodent, unit: 'ay' },
+          indoorRodent: { frequency: freqIndoorRodent, unit: 'ay' },
+          crawlingPest: { frequency: freqCrawlingPest, unit: 'ay' },
+          flyingPest: { frequency: freqFlyingPest, unit: 'ay' },
+          storagePest: { frequency: freqStoragePest, unit: 'ay' }
+        },
+        chemicalsUsed: [],
         methods: [
           { name: "Kemirgen İstasyon Kontrolü", desc: "Kilitli dış çevre yemleme istasyonları.", active: true },
           { name: "Yürüyen Haşere İzleme", desc: "Yapışkan pheromone monitörleri.", active: true }
         ],
         files: [],
         stations: [
-          { code:"R-01", type:"rodent", x:20, y:20, checked:false, status:"unchecked", baitStatus:"intact", pestType:"none", pestCount:0, notes:"" },
-          { code:"R-02", type:"rodent", x:80, y:20, checked:false, status:"unchecked", baitStatus:"intact", pestType:"none", pestCount:0, notes:"" },
-          { code:"C-01", type:"crawler", x:20, y:80, checked:false, status:"unchecked", baitStatus:"intact", pestType:"none", pestCount:0, notes:"" },
-          { code:"C-02", type:"crawler", x:80, y:80, checked:false, status:"unchecked", baitStatus:"intact", pestType:"none", pestCount:0, notes:"" }
+          { code:"R-01", type:"rodent_bait", x:20, y:20, checked:false, status:"unchecked", baitStatus:"intact", pestType:"none", pestCount:0, notes:"" },
+          { code:"R-02", type:"rodent_bait", x:80, y:20, checked:false, status:"unchecked", baitStatus:"intact", pestType:"none", pestCount:0, notes:"" },
+          { code:"BD-01", type:"insect_detector", x:20, y:80, checked:false, status:"unchecked", baitStatus:"intact", pestType:"none", pestCount:0, notes:"" },
+          { code:"BD-02", type:"insect_detector", x:80, y:80, checked:false, status:"unchecked", baitStatus:"intact", pestType:"none", pestCount:0, notes:"" }
         ]
       };
       state.sites.push(newSite);
       save();
       $('#modal').classList.add('hidden');
       renderSites();
-      toast('Tesis portföye eklendi.');
+      toast('Yeni Tesis ve Hizmet Sözleşmesi başarıyla portföye eklendi.');
     }
     
     if(e.target.id==='generateReport'){
