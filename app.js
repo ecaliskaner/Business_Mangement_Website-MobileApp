@@ -645,6 +645,41 @@ function renderTask(){
     return;
   }
   
+  const site = state.sites.find(s => s.id === w.siteId) || state.sites[0];
+  const visitChems = (site.chemicalsUsed || []).filter(cu => cu.workOrderId === w.id);
+  
+  const chemsListHtml = visitChems.map((cu, idx) => {
+    const chem = chemicalDatabase.find(c => c.id === cu.chemicalId);
+    const chemName = chem ? chem.name : 'Kimyasal';
+    return `
+      <div style="display:flex; justify-content:space-between; align-items:center; background:var(--soft); border:1px solid var(--line); border-radius:6px; padding:6px 10px; margin-bottom:6px; font-size:12px;">
+        <div>
+          <b>${chemName}</b><br>
+          <small class="text-muted">Miktar: ${cu.quantity} · Alan: ${cu.area} ${cu.notes ? `· ${cu.notes}` : ''}</small>
+        </div>
+        ${w.completed ? '' : `<button class="text-btn delete-task-chem-btn" data-chem-index="${idx}" style="color:var(--red); font-size:16px; font-weight:700; border:none; background:none; cursor:pointer;">×</button>`}
+      </div>
+    `;
+  }).join('') || '<p class="text-muted" style="font-size:11px; margin-bottom:12px;">Bu ziyarette henüz kullanılan kimyasal girilmedi.</p>';
+
+  const chemFormHtml = w.completed ? '' : `
+    <form id="taskChemicalForm" style="border:1px solid var(--line); border-radius:8px; padding:12px; margin-bottom:14px; background:#fafafa;">
+      <p style="font-size:10px; font-weight:700; color:var(--muted); margin-bottom:8px; text-transform:uppercase; letter-spacing:0.5px;">💊 Kullanılan Kimyasal Ekle</p>
+      <div style="display:grid; gap:8px;">
+        <select required id="taskChemSelect" class="form-select" style="height:32px; font-size:12px; padding:0 6px;">
+          <option value="">-- Kimyasal Seçin --</option>
+          ${chemicalDatabase.map(c => `<option value="${c.id}">${c.name}</option>`).join('')}
+        </select>
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px;">
+          <input required type="text" id="taskChemQty" placeholder="Miktar (Örn: 100 ml)" class="form-input" style="height:32px; font-size:12px;">
+          <input required type="text" id="taskChemArea" placeholder="Alan (Örn: 200 m²)" class="form-input" style="height:32px; font-size:12px;">
+        </div>
+        <input type="text" id="taskChemNotes" placeholder="Açıklama / Notlar" class="form-input" style="height:32px; font-size:12px;">
+        <button type="submit" class="secondary-btn" style="height:32px; justify-content:center; padding:0; width:100%;">Kimyasal Ekle</button>
+      </div>
+    </form>
+  `;
+
   const compBtn = w.completed ? 
     `<button class="secondary-btn" disabled style="width:100%;">✓ Servis Tamamlandı</button>` : 
     `<button class="primary-btn" id="completeWork">✓ Tamamlandı olarak işaretle</button>`;
@@ -653,13 +688,23 @@ function renderTask(){
     <span class="status-chip ${w.completed?'healthy':w.priority}">${w.completed?'Tamamlandı':w.type}</span>
     <h2>${w.title}</h2>
     <p>${w.description}</p>
-    <div class="detail-list">
+    <div class="detail-list" style="margin-bottom:14px;">
       <div><span>Tesis</span><b>${w.site.split(' · ')[1]}</b></div>
       <div><span>Ziyaret Türü</span><b>${(visitTypes.find(v=>v.code===w.visitType)||{}).name || 'Belirtilmedi'}</b></div>
       <div><span>Atanan teknisyen</span><b>${w.tech}</b></div>
       <div><span>Hedef zaman</span><b>${w.due}</b></div>
       <div><span>İş emri</span><b>${w.id}</b></div>
     </div>
+    
+    <div style="margin-bottom:14px;">
+      <p class="overline">KULLANILAN KİMYASALLAR / MALZEMELER</p>
+      <div style="margin-top:6px;">
+        ${chemsListHtml}
+      </div>
+    </div>
+    
+    ${chemFormHtml}
+    
     <div style="display:grid; gap:8px;">
       ${compBtn}
       <button class="secondary-btn" data-site-id="${w.siteId}">⌖ Tesis Kat Planını Aç</button>
@@ -1213,6 +1258,13 @@ function showMobileJobDetail(work) {
   // 4. Stations List
   const cardStations = $('#cardStationsList');
   cardStations.classList.toggle('disabled', !mobQrStarted);
+  
+  // 4b. Chemical Usage
+  const cardChem = $('#cardMobChemicalUsage');
+  if (cardChem) {
+    cardChem.classList.toggle('disabled', !mobQrStarted);
+  }
+  renderMobChemicalsList(site);
   
   const checked = site.stations.filter(s => s.checked).length;
   const isComplete = mobQrStarted && checked === site.stations.length;
@@ -2300,10 +2352,9 @@ function bind(){
       const laborCost = Math.round((durationMin / 60) * techRate);
       
       let chemicalCost = 0;
-      const todayStr = new Date().toLocaleDateString('tr-TR', { day: '2-digit', month: 'short' });
       const siteChems = site.chemicalsUsed || [];
       siteChems.forEach(cu => {
-        if (cu.tech === mobJob.tech && (cu.date.includes('Bugün') || cu.date.includes(todayStr))) {
+        if (cu.workOrderId === mobJob.id) {
           const chem = chemicalDatabase.find(c => c.id === cu.chemicalId);
           if (chem) {
             const qty = parseFloat(cu.quantity.replace(/[^\d\.]/g, '')) || 0;
@@ -2311,7 +2362,7 @@ function bind(){
           }
         }
       });
-      if (chemicalCost === 0) chemicalCost = 220; // baseline chemical cost
+      if (chemicalCost === 0) chemicalCost = 150; // demo baseline if none used
       
       const billingAmount = site.contract ? site.contract.monthlyPrice : 3500;
       const profit = billingAmount - (laborCost + chemicalCost);
@@ -2400,6 +2451,74 @@ function bind(){
         save();
         renderFinance();
         toast(`Fatura ${invId} ödendi olarak işaretlendi.`);
+      }
+      return;
+    }
+
+    // Delete mobile chemical usage
+    const deleteMobChemBtn = e.target.closest('.delete-mob-chem-btn');
+    if (deleteMobChemBtn) {
+      if (!mobJob) return;
+      const site = state.sites.find(s => s.id === mobJob.siteId);
+      if (!site) return;
+      
+      const idx = parseInt(deleteMobChemBtn.dataset.chemIndex);
+      const visitChems = site.chemicalsUsed.filter(cu => cu.workOrderId === mobJob.id);
+      const targetChemUse = visitChems[idx];
+      
+      if (targetChemUse) {
+        // Restore stock
+        const numVal = parseFloat(targetChemUse.quantity.replace(/[^\d\.]/g, '')) || 0;
+        const invItem = state.inventory.find(i => i.chemicalId === targetChemUse.chemicalId);
+        if (invItem && numVal > 0) {
+          invItem.qty = Math.round((invItem.qty + numVal) * 10) / 10;
+        }
+        
+        // Remove from list
+        const mainIdx = site.chemicalsUsed.indexOf(targetChemUse);
+        if (mainIdx > -1) {
+          site.chemicalsUsed.splice(mainIdx, 1);
+        }
+        
+        save();
+        renderMobChemicalsList(site);
+        renderInventory();
+        toast('Kimyasal kullanımı silindi ve stok iade edildi.');
+      }
+      return;
+    }
+
+    // Delete desktop task chemical usage
+    const deleteTaskChemBtn = e.target.closest('.delete-task-chem-btn');
+    if (deleteTaskChemBtn) {
+      const w = state.work.find(x => x.id === state.selectedWork) || state.work[0];
+      if (!w) return;
+      
+      const site = state.sites.find(s => s.id === w.siteId);
+      if (!site) return;
+      
+      const idx = parseInt(deleteTaskChemBtn.dataset.chemIndex);
+      const visitChems = site.chemicalsUsed.filter(cu => cu.workOrderId === w.id);
+      const targetChemUse = visitChems[idx];
+      
+      if (targetChemUse) {
+        // Restore stock
+        const numVal = parseFloat(targetChemUse.quantity.replace(/[^\d\.]/g, '')) || 0;
+        const invItem = state.inventory.find(i => i.chemicalId === targetChemUse.chemicalId);
+        if (invItem && numVal > 0) {
+          invItem.qty = Math.round((invItem.qty + numVal) * 10) / 10;
+        }
+        
+        // Remove from list
+        const mainIdx = site.chemicalsUsed.indexOf(targetChemUse);
+        if (mainIdx > -1) {
+          site.chemicalsUsed.splice(mainIdx, 1);
+        }
+        
+        save();
+        renderTask();
+        renderInventory();
+        toast('Kimyasal kullanımı silindi ve stok iade edildi.');
       }
       return;
     }
@@ -2763,6 +2882,105 @@ function bind(){
       e.target.reset();
       toast('Stok girişi başarıyla tamamlandı.');
     }
+
+    // Desktop Task Chemical Form submit
+    if (e.target.id === 'taskChemicalForm') {
+      e.preventDefault();
+      const w = state.work.find(x => x.id === state.selectedWork) || state.work[0];
+      if (!w) return;
+      
+      const site = state.sites.find(s => s.id === w.siteId);
+      if (!site) return;
+      
+      const inpChemSelect = $('#taskChemSelect');
+      const inpChemQty = $('#taskChemQty');
+      const inpChemArea = $('#taskChemArea');
+      const inpChemNotes = $('#taskChemNotes');
+      if (!inpChemSelect || !inpChemQty || !inpChemArea || !inpChemNotes) return;
+      
+      const chemicalId = inpChemSelect.value;
+      const quantity = inpChemQty.value.trim();
+      const area = inpChemArea.value.trim();
+      const notes = inpChemNotes.value.trim();
+      
+      if (!chemicalId || !quantity || !area) return;
+      
+      const dateStr = new Date().toLocaleDateString('tr-TR', { day: '2-digit', month: 'short', year: 'numeric' });
+      const newChemUse = {
+        id: `cu${Date.now()}`,
+        workOrderId: w.id,
+        chemicalId: chemicalId,
+        date: dateStr,
+        quantity: quantity,
+        area: area,
+        tech: w.tech,
+        notes: notes || 'Ziyaret uygulaması'
+      };
+      
+      if (!site.chemicalsUsed) site.chemicalsUsed = [];
+      site.chemicalsUsed.unshift(newChemUse);
+      
+      // Auto-deduct stock
+      deductStock(chemicalId, quantity);
+      
+      save();
+      renderTask();
+      
+      inpChemSelect.value = '';
+      inpChemQty.value = '';
+      inpChemArea.value = '';
+      inpChemNotes.value = '';
+      toast('Kimyasal başarıyla eklendi.');
+    }
+
+    // Mobile Chemical Form submit
+    if (e.target.id === 'mobChemicalForm') {
+      e.preventDefault();
+      if (!mobJob) return;
+      
+      const site = state.sites.find(s => s.id === mobJob.siteId);
+      if (!site) return;
+      
+      const inpChemSelect = $('#mobChemSelect');
+      const inpChemQty = $('#mobChemQty');
+      const inpChemArea = $('#mobChemArea');
+      const inpChemNotes = $('#mobChemNotes');
+      if (!inpChemSelect || !inpChemQty || !inpChemArea || !inpChemNotes) return;
+      
+      const chemicalId = inpChemSelect.value;
+      const quantity = inpChemQty.value.trim();
+      const area = inpChemArea.value.trim();
+      const notes = inpChemNotes.value.trim();
+      
+      if (!chemicalId || !quantity || !area) return;
+      
+      const dateStr = new Date().toLocaleDateString('tr-TR', { day: '2-digit', month: 'short', year: 'numeric' });
+      const newChemUse = {
+        id: `cu${Date.now()}`,
+        workOrderId: mobJob.id,
+        chemicalId: chemicalId,
+        date: dateStr,
+        quantity: quantity,
+        area: area,
+        tech: mobJob.tech,
+        notes: notes || 'Saha uygulaması'
+      };
+      
+      if (!site.chemicalsUsed) site.chemicalsUsed = [];
+      site.chemicalsUsed.unshift(newChemUse);
+      
+      // Auto-deduct stock
+      deductStock(chemicalId, quantity);
+      
+      save();
+      renderMobChemicalsList(site);
+      
+      inpChemSelect.value = '';
+      inpChemQty.value = '';
+      inpChemArea.value = '';
+      inpChemNotes.value = '';
+      toast('Kimyasal başarıyla eklendi.');
+    }
   });
 }
 
@@ -3073,6 +3291,29 @@ function deductStock(chemicalId, amountStr) {
     toast(`UYARI: ${item.name} stok seviyesi kritik sınırın altına düştü!`);
   }
 }
+
+function renderMobChemicalsList(site) {
+  const container = $('#mobChemicalList');
+  if (!container) return;
+  if (!mobJob) return;
+  
+  const visitChems = (site.chemicalsUsed || []).filter(cu => cu.workOrderId === mobJob.id);
+  
+  container.innerHTML = visitChems.map((cu, index) => {
+    const chem = chemicalDatabase.find(c => c.id === cu.chemicalId);
+    const chemName = chem ? chem.name : 'Kimyasal';
+    return `
+      <div style="background:var(--soft); border:1px solid var(--line); border-radius:6px; padding:8px; display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+        <div>
+          <b>${chemName}</b><br>
+          <small class="text-muted">Miktar: ${cu.quantity} · Alan: ${cu.area}</small>
+        </div>
+        ${mobJob.completed ? '' : `<button type="button" class="text-btn delete-mob-chem-btn" data-chem-index="${index}" style="color:var(--red); font-size:16px; font-weight:700; border:none; background:none; cursor:pointer;">×</button>`}
+      </div>
+    `;
+  }).join('') || '<div class="text-muted" style="text-align:center; padding:10px; font-size:10px; background:var(--soft); border-radius:6px;">Ziyarette henüz kullanılan kimyasal girilmedi.</div>';
+}
+
 function renderInventory() {
   const tbody = $('#invStockTableBody');
   if (!tbody) return;

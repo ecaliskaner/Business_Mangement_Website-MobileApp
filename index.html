@@ -1039,6 +1039,42 @@
                         </div>
                       </div>
 
+                      <!-- Chemical Usage Capture -->
+                      <div class="mob-action-card disabled" id="cardMobChemicalUsage">
+                        <div class="mob-card-desc" style="margin-bottom:10px;">
+                          <b>4b. Kimyasal / Biyosidal Kullanımı</b>
+                          <p>Uygulanan kimyasalları, miktarlarını ve uygulama alanlarını girin.</p>
+                        </div>
+                        
+                        <div id="mobChemicalList" style="margin-bottom:10px; font-size:11px; display:grid; gap:4px;">
+                          <!-- Already added chemicals list -->
+                        </div>
+
+                        <form id="mobChemicalForm" style="display:grid; gap:8px;">
+                          <select required id="mobChemSelect" class="form-select" style="height:32px; padding:0 6px; font-size:11px;">
+                            <option value="">-- Kimyasal Seçin --</option>
+                            <option value="ch1">K-Othrine SC 25</option>
+                            <option value="ch2">Goliath Gel</option>
+                            <option value="ch3">Racumin Paste</option>
+                            <option value="ch4">Storm Secure</option>
+                            <option value="ch5">Aqua K-Othrine EW 20</option>
+                            <option value="ch6">Icon 10 CS</option>
+                            <option value="ch7">Maxforce White IC</option>
+                            <option value="ch8">Cislin 2.5 UL</option>
+                            <option value="ch9">Steri-Fab</option>
+                            <option value="ch10">Actellic 50 EC</option>
+                            <option value="ch11">Demand CS</option>
+                            <option value="ch12">Responsar SC</option>
+                          </select>
+                          <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px;">
+                            <input required type="text" id="mobChemQty" placeholder="Miktar (Örn: 250 ml)" class="form-input" style="height:32px; font-size:11px;">
+                            <input required type="text" id="mobChemArea" placeholder="Alan (Örn: 500 m²)" class="form-input" style="height:32px; font-size:11px;">
+                          </div>
+                          <input type="text" id="mobChemNotes" placeholder="Uygulama Notu (Opsiyonel)" class="form-input" style="height:32px; font-size:11px;">
+                          <button type="submit" class="secondary-btn" style="height:32px; padding:0; justify-content:center;">＋ Kimyasal Ekle</button>
+                        </form>
+                      </div>
+
                       <!-- Digital Signature Capture -->
                       <div class="mob-action-card disabled" id="cardSignature">
                         <div class="mob-card-desc" style="margin-bottom:10px;">
