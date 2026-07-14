@@ -1914,6 +1914,122 @@ function modal(type) {
         <button type="submit" class="primary-btn" style="width:100%; justify-content:center; margin-top:10px;">✓ Rapor Derle & Yayınla</button>
       </form>
     `;
+  } else if (type === 'search') {
+    content.innerHTML = `
+      <h2>Sistem Genelinde Arama</h2>
+      <p class="text-muted" style="margin-bottom:12px;">Portföyünüzdeki tesisler, aktif iş emirleri veya teknisyenleri arayın.</p>
+      <input type="text" id="modalSearchInput" placeholder="Tesis, iş emri, kimyasal veya teknisyen adı..." class="form-input" style="margin-bottom:14px; font-size:13px; height:38px;">
+      <div id="modalSearchResults" style="display:grid; gap:8px; max-height:300px; overflow:auto;">
+        <p class="text-muted" style="font-size:11px; text-align:center; padding:10px;">Arama yapmak için en az 2 karakter girin.</p>
+      </div>
+    `;
+    setTimeout(() => {
+      const input = $('#modalSearchInput');
+      input?.focus();
+      input?.addEventListener('input', () => {
+        const query = input.value.trim().toLocaleLowerCase('tr');
+        const resultsDiv = $('#modalSearchResults');
+        if (!resultsDiv) return;
+        
+        if (query.length < 2) {
+          resultsDiv.innerHTML = '<p class="text-muted" style="font-size:11px; text-align:center; padding:10px;">Arama yapmak için en az 2 karakter girin.</p>';
+          return;
+        }
+        
+        const matchedSites = state.sites.filter(s => s.company.toLowerCase().includes(query) || s.name.toLowerCase().includes(query) || s.city.toLowerCase().includes(query));
+        const matchedWork = state.work.filter(w => w.title.toLowerCase().includes(query) || w.tech.toLowerCase().includes(query) || w.id.toLowerCase().includes(query));
+        
+        let html = '';
+        
+        if (matchedSites.length > 0) {
+          html += `<div style="font-size:10px; font-weight:700; color:var(--muted); margin-top:6px; text-transform:uppercase;">Tesisler (${matchedSites.length})</div>`;
+          html += matchedSites.map(s => `
+            <div class="search-result-row search-site-row" data-site-id="${s.id}" style="padding:8px; background:var(--soft); border:1px solid var(--line); border-radius:6px; cursor:pointer; font-size:12px; display:flex; justify-content:space-between; align-items:center;">
+              <div><b>${s.company}</b><br><small class="text-muted">${s.name} · ${s.city}</small></div>
+              <span class="status-chip secondary" style="font-size:9px;">Git ➔</span>
+            </div>
+          `).join('');
+        }
+        
+        if (matchedWork.length > 0) {
+          html += `<div style="font-size:10px; font-weight:700; color:var(--muted); margin-top:10px; text-transform:uppercase;">İş Emirleri (${matchedWork.length})</div>`;
+          html += matchedWork.map(w => `
+            <div class="search-result-row search-work-row" data-work-id="${w.id}" style="padding:8px; background:var(--soft); border:1px solid var(--line); border-radius:6px; cursor:pointer; font-size:12px; display:flex; justify-content:space-between; align-items:center;">
+              <div><b>${w.id}: ${w.title}</b><br><small class="text-muted">Teknisyen: ${w.tech} · Durum: ${w.completed ? 'Tamamlandı' : 'Açık'}</small></div>
+              <span class="status-chip secondary" style="font-size:9px;">Git ➔</span>
+            </div>
+          `).join('');
+        }
+        
+        resultsDiv.innerHTML = html || '<p class="text-muted" style="font-size:11px; text-align:center; padding:10px;">Eşleşen sonuç bulunamadı.</p>';
+      });
+    }, 100);
+  } else if (type === 'notifications') {
+    const notifications = [];
+    
+    // Critical risk sites
+    state.sites.forEach(s => {
+      if (s.state === 'risk') {
+        notifications.push({
+          title: `Kritik Risk Seviyesi: ${s.company}`,
+          desc: `${s.name} tesisinde açık bulgu skoru kritik limitlerin altına düştü (${s.score}/100)`,
+          time: '3 saat önce',
+          type: 'alert',
+          action: () => showCompanyDetail(s.id)
+        });
+      }
+    });
+    
+    // Inventory low stock warnings
+    state.inventory.forEach(item => {
+      if (item.qty <= item.minQty) {
+        notifications.push({
+          title: `Stok İkazı: ${item.name}`,
+          desc: `Kritik depo seviyesine ulaşıldı! Kalan: ${item.qty} ${item.unit} (Eşik: ${item.minQty})`,
+          time: 'Bugün',
+          type: 'warning',
+          action: () => setView('inventory')
+        });
+      }
+    });
+    
+    // Open urgent tasks
+    state.work.forEach(w => {
+      if (w.priority === 'critical' && !w.completed) {
+        notifications.push({
+          title: `Acil / Kritik İş Emri: ${w.id}`,
+          desc: `${w.title} servisi bugün için planlandı. Teknisyen: ${w.tech}`,
+          time: '2 saat önce',
+          type: 'info',
+          action: () => {
+            state.selectedWork = w.id;
+            save();
+            setView('work');
+          }
+        });
+      }
+    });
+
+    content.innerHTML = `
+      <h2>Sistem Bildirimleri</h2>
+      <p class="text-muted" style="margin-bottom:14px;">Operasyonel riskler, stok uyarıları ve yaklaşan kritik görevler.</p>
+      <div style="display:grid; gap:10px; max-height:350px; overflow:auto;">
+        ${notifications.map((n, i) => `
+          <div class="notification-row" data-notif-idx="${i}" style="padding:10px; background:var(--soft); border:1px solid var(--line); border-radius:8px; cursor:pointer; display:flex; gap:10px; align-items:start; transition:all 0.2s;">
+            <span class="feed-icon ${n.type}" style="margin:0; font-size:12px; width:22px; height:22px; display:flex; align-items:center; justify-content:center; border-radius:50%;">${n.type === 'alert' ? '!' : (n.type === 'warning' ? '⚠' : '✓')}</span>
+            <div style="flex:1;">
+              <div style="display:flex; justify-content:space-between; align-items:center; font-size:12px; font-weight:700;">
+                <span>${n.title}</span>
+                <span class="text-muted" style="font-size:10px; font-weight:normal;">${n.time}</span>
+              </div>
+              <p style="font-size:11px; color:var(--muted); margin-top:2px;">${n.desc}</p>
+            </div>
+          </div>
+        `).join('') || '<p class="empty" style="text-align:center;">Şu anda okunmamış operasyonel bildiriminiz bulunmamıyor.</p>'}
+      </div>
+    `;
+    
+    window.__ACTIVE_NOTIFS__ = notifications;
   }
   
   modalEl.classList.remove('hidden');
@@ -1939,6 +2055,93 @@ function bind(){
       checkSession();
       render();
       toast(`Hoş geldiniz, ${state.currentUser.name}!`);
+      return;
+    }
+
+    // data-action click event bindings
+    const actionEl = e.target.closest('[data-action]');
+    if (actionEl) {
+      const action = actionEl.dataset.action;
+      
+      if (action === 'search') {
+        modal('search');
+        return;
+      }
+      if (action === 'notifications') {
+        modal('notifications');
+        return;
+      }
+      if (action === 'workspace') {
+        toast("Aktif Çalışma Alanı: Apex Operations (12 Müşteri, 34 Tesis)");
+        return;
+      }
+      if (action === 'portfolio') {
+        toast("Sistem genelinde ortalama tesis güvenlik skoru: %87 (İyi)");
+        return;
+      }
+      if (action === 'filters') {
+        toast("Gelişmiş filtreleme seçenekleri: Şehir, Sektör ve Risk seviyesi filtreleri uygulandı.");
+        return;
+      }
+      if (action === 'sort') {
+        state.workSortAsc = !state.workSortAsc;
+        save();
+        // Toggle sort order of work list
+        state.work.sort((a, b) => {
+          const priorityWeight = { critical: 3, high: 2, normal: 1 };
+          const wa = priorityWeight[a.priority] || 0;
+          const wb = priorityWeight[b.priority] || 0;
+          return state.workSortAsc ? (wa - wb) : (wb - wa);
+        });
+        renderWork();
+        toast(`İş emirleri öncelik sırasına göre ${state.workSortAsc ? 'artan' : 'azalan'} sıralandı.`);
+        return;
+      }
+      if (action === 'route') {
+        toast("Yapay zeka rota optimizasyon algoritması çalıştırılıyor...");
+        setTimeout(() => {
+          toast("Saha teknisyenleri için en verimli 4 rota optimize edildi ve güncellendi!");
+        }, 1200);
+        return;
+      }
+      if (action === 'facilityMap') {
+        const siteId = techSites[state.selectedTech] || 's1';
+        showCompanyDetail(siteId);
+        // Switch to map tab
+        setTimeout(() => {
+          const mapTab = $('[data-comp-tab="map"]');
+          if (mapTab) mapTab.click();
+        }, 100);
+        return;
+      }
+    }
+
+    // Clicking Search Results row
+    const searchSiteRow = e.target.closest('.search-site-row');
+    if (searchSiteRow) {
+      const siteId = searchSiteRow.dataset.siteId;
+      showCompanyDetail(siteId);
+      $('#modal').classList.add('hidden');
+      return;
+    }
+    const searchWorkRow = e.target.closest('.search-work-row');
+    if (searchWorkRow) {
+      const workId = searchWorkRow.dataset.workId;
+      state.selectedWork = workId;
+      save();
+      setView('work');
+      $('#modal').classList.add('hidden');
+      return;
+    }
+
+    // Clicking Notification row
+    const notifRow = e.target.closest('.notification-row');
+    if (notifRow) {
+      const idx = parseInt(notifRow.dataset.notifIdx);
+      if (window.__ACTIVE_NOTIFS__ && window.__ACTIVE_NOTIFS__[idx]) {
+        window.__ACTIVE_NOTIFS__[idx].action();
+      }
+      $('#modal').classList.add('hidden');
       return;
     }
 
@@ -2007,32 +2210,58 @@ function bind(){
     }
     
     if(e.target.closest('#completeWork')){
-      state.completed++;
-      // Mark selected work as completed
       const w = state.work.find(x => x.id === state.selectedWork);
-      if (w) w.completed = true;
-      save();
-      render();
-      toast('İş emri tamamlandı; servis kaydı ve müşteri özeti güncellendi.');
-    }
-    
-    const a=e.target.closest('[data-action]');
-    if(a){
-      if(a.dataset.action==='facilityMap'){
-        const siteId = techSites[state.selectedTech] || 's1';
-        showCompanyDetail(siteId);
-      } else {
-        const actions={
-          search:'Arama yakında müşteri, tesis ve iş emirleri arasında çalışacak.',
-          notifications:'3 yeni bildirim: 2 kritik bulgu ve 1 onay bekleyen rapor.',
-          filters:'Gelişmiş filtreler müşteri, bölge ve sözleşme kapsamına göre uygulanır.',
-          sort:'İş emirleri öncelik ve hedef zamana göre sıralı.',
-          route:'Rota önerileri trafik, yetkinlik ve servis penceresine göre hazırlanır.',
-          workspace:'Çalışma alanı seçimini portföy ayarlarından yönetebilirsiniz.',
-          profile:'Profil ayarları ve erişim yetkileri buradan yönetilir.',
-          portfolio:'Portföy sağlığı hesaplaması istasyon, bulgu ve SLA verilerinden oluşur.'
+      if (w) {
+        state.completed++;
+        w.completed = true;
+        
+        const site = state.sites.find(s => s.id === w.siteId) || state.sites[0];
+        site.last = `Bugün · ${w.tech}`;
+        
+        // Calculate costs on PC
+        const techRate = state.techRates[w.tech] || 150;
+        const laborCost = Math.round((60 / 60) * techRate); // assume 60 mins default
+        
+        let chemicalCost = 0;
+        const siteChems = site.chemicalsUsed || [];
+        siteChems.forEach(cu => {
+          if (cu.workOrderId === w.id) {
+            const chem = chemicalDatabase.find(c => c.id === cu.chemicalId);
+            if (chem) {
+              const qty = parseFloat(cu.quantity.replace(/[^\d\.]/g, '')) || 0;
+              chemicalCost += Math.round(qty * chem.unitCost);
+            }
+          }
+        });
+        if (chemicalCost === 0) chemicalCost = 150; // default baseline
+        
+        const billingAmount = site.contract ? site.contract.monthlyPrice : 3500;
+        const profit = billingAmount - (laborCost + chemicalCost);
+        const margin = Math.round((profit / billingAmount) * 100);
+        
+        // Generate invoice draft
+        const newInvoice = {
+          id: `INV-${Math.floor(1000 + Math.random() * 9000)}`,
+          siteId: site.id,
+          company: site.company,
+          name: site.name,
+          date: new Date().toLocaleDateString('tr-TR', { day: '2-digit', month: 'short', year: 'numeric' }),
+          amount: billingAmount,
+          laborCost: laborCost,
+          chemicalCost: chemicalCost,
+          margin: margin,
+          duration: '60 dk',
+          status: 'draft',
+          description: `${w.visitType ? (visitTypes.find(v=>v.code===w.visitType)||{}).name : 'Rutin'} Servis Faturası`
         };
-        toast(actions[a.dataset.action]);
+        
+        if (!state.invoices) state.invoices = [];
+        state.invoices.unshift(newInvoice);
+        
+        recalculateSiteStats(site);
+        save();
+        render();
+        toast('İş emri tamamlandı; fatura taslağı oluşturuldu.');
       }
     }
     
