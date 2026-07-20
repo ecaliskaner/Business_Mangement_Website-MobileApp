@@ -110,3 +110,89 @@ These pairs touch nearly disjoint files:
 - Anything ‖ a `src/core/` change
 - Two sessions both adding `<section>`s to `index.html`
 - Anything ‖ Phase 0a
+
+**`styles.css` is shared.** It is one 43 KB file with no module system. Rule:
+**append only**, inside your own banner comment:
+
+```css
+/* ===== Phase 1: equipment placement forms ===== */
+```
+
+Never reformat or reorder existing rules — that turns a clean append into a
+whole-file conflict.
+
+---
+
+## Ready-to-use session prompts
+
+Phase 0a is done, so these can run at the same time. Wave 1 below is chosen so
+the three sessions touch disjoint files.
+
+### Session A — history engine (task 0b)
+
+> Read `docs/PLAN.md`, `docs/TASKS.md` and `docs/SESSIONS.md` first.
+>
+> You own task **0b-1 and 0b-2**. Claim them in `docs/TASKS.md` and claim
+> `src/data/history.js` in the ownership registry in `docs/SESSIONS.md`.
+>
+> Build a **seeded, deterministic 12-month visit history generator** in
+> `src/data/history.js` covering all 6 sites: station readings, pest counts per
+> device, chemicals used, recommendations raised and closed, technician
+> timings. Seasonality must be realistic — flying pests peak Jun–Aug, so the
+> seasonal contract frequencies already in the data mean something on screen.
+> Identical output on every run; no demo-day surprises.
+>
+> Then wire it into `src/views/insights.js` so the trend chart reads real
+> history instead of the hardcoded 8-element array.
+>
+> Constraints: this is a **pitch demo** — no backend, simulation is fine, but
+> every feature must visibly work. Run `python scripts/checkimports.py` and
+> verify in the browser before committing. Work on branch `phase-0b`.
+
+### Session B — charts and export (task 0c)
+
+> Read `docs/PLAN.md`, `docs/TASKS.md` and `docs/SESSIONS.md` first.
+>
+> You own tasks **0c-1 and 0c-2**. Claim them in `docs/TASKS.md` and claim
+> `src/ui/charts.js` and `src/ui/export.js` in the registry.
+>
+> Build a hand-rolled **SVG chart module** (line, bar, stacked bar, donut) with
+> no external dependencies — the demo must survive bad conference wifi, which
+> is why `html5-qrcode` was vendored. Then build CSV export (blob download) and
+> a print-to-PDF stylesheet.
+>
+> `styles.css` is shared: **append only**, inside your own banner comment.
+>
+> Constraints: this is a **pitch demo** — no backend, simulation is fine, but
+> every feature must visibly work. Run `python scripts/checkimports.py` and
+> verify in the browser before committing. Work on branch `phase-0c`.
+
+### Session C — Repellent Stage 1, history-independent parts
+
+> Read `docs/PLAN.md`, `docs/TASKS.md`, `docs/SESSIONS.md`, and the
+> requirements in `Repellent Online sistem yol haritası.docx` (extract its text
+> from `word/document.xml`; the encoding is mangled but readable).
+>
+> You own tasks **1-1, 1-3, 1-4, 1-5, 1-7**. Claim them in `docs/TASKS.md` and
+> claim `src/views/companyDetail.js`, `src/views/mobile.js`,
+> `src/data/catalog.js` and `src/ui/signature.js` in the registry.
+>
+> Build: per-equipment-type placement forms (fly units need tube length, unit
+> power, UV tube type, purchase date, tube-change date; moth and beetle traps
+> need trap type, purchase date, pheromone-change period); multi-pest
+> multi-count entry per device; MSDS / label / ministry-permit attachments per
+> chemical; the dosage and water auto-calculator; and dual digital signature
+> wired into visit completion.
+>
+> Skip 1-2 and 1-6 — they need the history engine from Session A.
+>
+> Constraints: this is a **pitch demo** — no backend, simulation is fine, but
+> every feature must visibly work. If you add a handler, add it to the chain in
+> `src/app.js` in **one line** at the position matching where it should run.
+> Run `python scripts/checkimports.py` and verify in the browser before
+> committing. Work on branch `phase-1a`.
+
+### Wave 2 (after A lands)
+
+Session A's history engine unblocks **1-2** (equipment replacement preserving
+history), **1-6** (closed-loop recommendations), and all of Phase 2.
