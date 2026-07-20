@@ -25,7 +25,7 @@ import {
   fileUploadSubmit, recommendationSubmit, chemicalUsageSubmit, placementSubmit,
   showStationDetail, switchCompanyTab, showCompanyDetail
 } from './views/companyDetail.js';
-import { reportCardClicks, generateReportSubmit } from './views/reports.js';
+import { reportCardClicks, reportModalClicks, generateReportSubmit } from './views/reports.js';
 import { mobileClicks, mobileChemDeleteClicks, mobChemicalSubmit, chemicalDocClicks } from './views/mobile.js';
 import { insightsClicks } from './views/insights.js';
 import { invoiceActionClicks, invoiceFilterClicks } from './views/finance.js';
@@ -223,6 +223,7 @@ const CLICK_CHAIN = [
   backNavClicks,
   calendarToggleClicks,
   planToolbarClicks,
+  reportModalClicks,
   reportCardClicks,
   mobileMenuClicks,
   planCanvasClicks,

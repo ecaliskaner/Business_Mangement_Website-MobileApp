@@ -1,143 +1,396 @@
-// Extracted from app.js (Phase 0a-3).
+// Reports view: compliance badges (5-1), 3rd Eye audit section (2-4) and the
+// five printable report bodies (1-8).
+//
+// This module owns presentation and interaction only — every report body lives
+// in reportBodies.js as a pure function, and the numbers come from the seeded
+// history engine. Nothing on this screen is hardcoded any more; the six cards
+// that previously shared three static bodies are now five distinct reports.
 
-import { $ } from '../core/dom.js';
-import { modal } from '../ui/modal.js';
-import { toast } from '../core/dom.js';
-import { save } from '../core/state.js';
+import { $, toast } from '../core/dom.js';
+import { printElement, downloadCSV } from '../ui/export.js';
+import {
+  getVisits, visitsForSite, monthlyPestTotals, getRecommendations, siteRanking
+} from '../data/history.js';
+import { initial } from '../data/seed.js';
+import {
+  STANDARDS, complianceOverview, sitesInScope, siteReadiness, STATUS_LABEL
+} from '../data/compliance.js';
+import {
+  visitReport, trendReport, comparisonReport, nonConformityReport, auditPackage
+} from './reportBodies.js';
 
-export function renderReports(){
-  const reports=[
-    ['▤','Aylık BRCGS Müşteri Servis Raporu','Servis özeti, istasyon bulguları ve dijital imza.','12 Tem 2026', 'r1'],
-    ['↗','Hadımköy DM Servis Özeti Raporu','Tüm istasyonlar için detaylı aktivite logu.','11 Tem 2026', 'r2'],
-    ['✓','AIB Hastane Hijyen Uyum Sertifikası','Mutfak, sterilizasyon ve UV cihaz kayıtları.','10 Tem 2026', 'r3'],
-    ['⌖','Tesis Aktivite Haritası Raporu','İstasyon bazında aktivite ve trend analizi.','7 Tem 2026', 'r1'],
-    ['!','Düzeltici Faaliyet Takip Raporu','Açık bulgular, sorumlular ve hedef tarihler.','5 Tem 2026', 'r2'],
-    ['◉','Sözleşme SLA Performans Özeti','Zamanında servis ve müşteri memnuniyeti analizi.','1 Tem 2026', 'r3']
-  ];
-  $('#reportGrid').innerHTML=reports.map(x=>`<article class="report-card"><span class="report-icon">${x[0]}</span><h2>${x[1]}</h2><p>${x[2]}</p><footer><span>Son oluşturulma: ${x[3]}</span><button class="text-btn" data-report="${x[1]}" data-report-id="${x[4]}">Aç →</button></footer></article>`).join('');
+const esc = (s) => String(s ?? '')
+  .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+const siteById = (id) => initial.sites.find((s) => s.id === id);
+
+/* ------------------------------------------------------------ report registry */
+
+// `scope` declares which selector chips a report needs, so the modal toolbar
+// builds itself instead of each report hand-rolling its own controls.
+const REPORTS = {
+  visit: {
+    icon: '▤',
+    title: 'Servis Ziyaret Raporu',
+    desc: 'Tek ziyaretin istasyon bulguları, kanıt zinciri, kimyasal kaydı ve çift imzası.',
+    scope: ['site', 'visit'],
+    build: (s) => visitReport(s.visit),
+    filename: (s) => `servis_raporu_${s.visit.id}`,
+    csv: (s) => ({
+      rows: s.visit.readings.map((r) => ({ ...r, date: s.visit.date, tech: s.visit.tech })),
+      columns: [
+        { key: 'date', label: 'Tarih' }, { key: 'code', label: 'İstasyon' },
+        { key: 'type', label: 'Cihaz Tipi' }, { key: 'category', label: 'Kategori' },
+        { key: 'status', label: 'Durum' }, { key: 'pestCount', label: 'Bulgu Adedi' },
+        { key: 'pestName', label: 'Tür' }, { key: 'tech', label: 'Teknisyen' }
+      ]
+    })
+  },
+  trend: {
+    icon: '↗',
+    title: 'Trend Analiz Raporu',
+    desc: '12 aylık aktivite trendi, tür kırılımı ve istasyon okuma dağılımı.',
+    scope: ['site'],
+    build: (s) => trendReport(s.siteId),
+    filename: (s) => `trend_raporu_${s.siteId}`,
+    csv: (s) => {
+      const t = monthlyPestTotals(s.siteId);
+      return {
+        rows: t.labels.map((label, i) => ({
+          month: label, rodent: t.rodent[i], flying: t.flying[i], crawler: t.crawler[i], all: t.all[i]
+        })),
+        columns: [
+          { key: 'month', label: 'Ay' }, { key: 'rodent', label: 'Kemirgen' },
+          { key: 'flying', label: 'Uçan Haşere' }, { key: 'crawler', label: 'Yürüyen Haşere' },
+          { key: 'all', label: 'Toplam' }
+        ]
+      };
+    }
+  },
+  comparison: {
+    icon: '⇄',
+    title: 'Tesis Karşılaştırma Raporu',
+    desc: 'Tüm tesislerin sıralaması, şehir bazında karşılaştırma ve portföy trendi.',
+    scope: [],
+    build: () => comparisonReport(),
+    filename: () => 'tesis_karsilastirma',
+    csv: () => ({
+      rows: siteRanking(),
+      columns: [
+        { key: 'name', label: 'Tesis' }, { key: 'company', label: 'Firma' },
+        { key: 'city', label: 'Şehir' }, { key: 'visits', label: 'Ziyaret' },
+        { key: 'totalPests', label: 'Toplam Bulgu' }, { key: 'recentPests', label: 'Son Çeyrek' },
+        { key: 'trend', label: 'Trend %' }, { key: 'openRecommendations', label: 'Açık Uygunsuzluk' },
+        { key: 'score', label: 'Skor' }
+      ]
+    })
+  },
+  nonconformity: {
+    icon: '!',
+    title: 'Uygunsuzluk & Düzeltici Faaliyet',
+    desc: 'Açık ve kapatılmış uygunsuzluklar, yaşlandırma ve kategori dağılımı.',
+    scope: ['siteOptional'],
+    build: (s) => nonConformityReport(s.siteId),
+    filename: (s) => `uygunsuzluk_raporu_${s.siteId || 'portfoy'}`,
+    csv: (s) => ({
+      rows: getRecommendations()
+        .filter((r) => !s.siteId || r.siteId === s.siteId)
+        .map((r) => ({ ...r, siteName: siteById(r.siteId) ? siteById(r.siteId).name : r.siteId })),
+      columns: [
+        { key: 'id', label: 'Kayıt' }, { key: 'siteName', label: 'Tesis' },
+        { key: 'category', label: 'Kategori' }, { key: 'desc', label: 'Tespit' },
+        { key: 'date', label: 'Açılış' }, { key: 'status', label: 'Durum' },
+        { key: 'closedDate', label: 'Kapanış', format: (v) => v || '—' },
+        { key: 'tech', label: 'Tespit Eden' }
+      ]
+    })
+  },
+  audit: {
+    icon: '✓',
+    title: 'Denetim Paketi',
+    desc: 'Standart bazında otomatik derlenen denetim dosyası, 3. göz kayıtları dahil.',
+    scope: ['standard'],
+    build: (s) => auditPackage(s.standardId),
+    filename: (s) => `denetim_paketi_${s.standardId}`,
+    csv: (s) => {
+      const standard = STANDARDS.find((x) => x.id === s.standardId);
+      const rows = sitesInScope(standard).flatMap((site) => {
+        const r = siteReadiness(standard, site);
+        return r ? r.checks.map((c) => ({
+          standard: standard.name, site: site.name, check: c.label,
+          value: c.value, target: c.target,
+          weight: c.major ? 'Majör' : 'Minör',
+          result: c.pass ? 'Uygun' : 'Uygunsuz'
+        })) : [];
+      });
+      return {
+        rows,
+        columns: [
+          { key: 'standard', label: 'Standart' }, { key: 'site', label: 'Tesis' },
+          { key: 'check', label: 'Kriter' }, { key: 'value', label: 'Ölçüm' },
+          { key: 'target', label: 'Hedef' }, { key: 'weight', label: 'Ağırlık' },
+          { key: 'result', label: 'Sonuç' }
+        ]
+      };
+    }
+  }
+};
+
+// Selection carried across toolbar interactions, so changing a chip re-renders
+// the open report rather than closing it.
+let current = null;
+
+function defaultSelection(key) {
+  const worstSiteId = siteRanking()[0].id;
+  if (key === 'visit') {
+    const visits = visitsForSite(worstSiteId);
+    return { siteId: worstSiteId, visit: visits[visits.length - 1] };
+  }
+  if (key === 'trend') return { siteId: worstSiteId };
+  if (key === 'nonconformity') return { siteId: null };
+  if (key === 'audit') return { standardId: 'brcgs' };
+  return {};
 }
 
-export function openReportModal(reportId) {
+/* ----------------------------------------------------------------- the view */
+
+export function renderReports() {
+  renderComplianceStrip();
+  renderThirdEye();
+  renderReportGrid();
+}
+
+// 5-1 — compliance badges, each one a live readiness rollup rather than a logo.
+function renderComplianceStrip() {
+  const el = $('#complianceStrip');
+  if (!el) return;
+  el.innerHTML = complianceOverview().map((s) => `
+    <button class="compliance-badge ${s.status}" data-standard="${s.standard.id}"
+            title="${esc(s.standard.full)}">
+      <span class="cb-name">${esc(s.standard.name)}</span>
+      <span class="cb-status">${esc(STATUS_LABEL[s.status])}</span>
+      <span class="cb-meta">${s.inScope ? `${s.ready}/${s.inScope} tesis hazır` : 'kapsam dışı'}</span>
+    </button>
+  `).join('');
+}
+
+// 2-4 — the 3rd Eye (3. Göz Denetim) independent audit section. Visit type 3G
+// already exists in the catalog and the history engine generates it, so these
+// are real records rather than a decorative panel.
+function renderThirdEye() {
+  const el = $('#thirdEyeList');
+  if (!el) return;
+  const audits = getVisits().filter((v) => v.visitType === '3G').slice().reverse();
+
+  const summary = $('#thirdEyeSummary');
+  if (summary) {
+    const clean = audits.filter((v) => v.totals.all === 0).length;
+    const sites = new Set(audits.map((v) => v.siteId)).size;
+    summary.innerHTML = `
+      <div class="rep-stat"><span>Bağımsız denetim</span><strong>${audits.length}</strong></div>
+      <div class="rep-stat"><span>Denetlenen tesis</span><strong>${sites}</strong></div>
+      <div class="rep-stat"><span>Bulgusuz kapanan</span><strong style="color:var(--green)">${clean}</strong></div>
+      <div class="rep-stat"><span>Bulgu tespit edilen</span><strong style="color:${audits.length - clean ? 'var(--red)' : 'var(--green)'}">${audits.length - clean}</strong></div>`;
+  }
+
+  // Coverage matters as much as the records themselves: an auditor asks which
+  // sites have *not* had an independent inspection, and only 2 of 6 have.
+  const coverage = $('#thirdEyeCoverage');
+  if (coverage) {
+    coverage.innerHTML = initial.sites.map((s) => {
+      const last = audits.find((v) => v.siteId === s.id);
+      return `<div class="te-cov ${last ? 'done' : 'due'}">
+        <span class="te-cov-site">${esc(s.name)}</span>
+        <span class="te-cov-state">${last
+          ? `Son denetim · ${esc(last.date)}`
+          : '12 aydır bağımsız denetim yok'}</span>
+      </div>`;
+    }).join('');
+  }
+
+  if (!audits.length) {
+    el.innerHTML = '<p class="rep-empty">Bu dönemde 3. göz denetimi kaydı bulunmuyor.</p>';
+    return;
+  }
+
+  el.innerHTML = audits.map((v) => `
+    <button class="third-eye-row" data-third-eye="${v.id}">
+      <span class="te-date">${esc(v.date)}</span>
+      <span class="te-site"><b>${esc(v.siteName)}</b><small>${esc(v.company)}</small></span>
+      <span class="te-tech">${esc(v.tech)}</span>
+      <span class="te-result">${v.totals.all > 0
+        ? `<span class="status-chip critical">${v.totals.all} bulgu</span>`
+        : '<span class="status-chip healthy">Bulgu yok</span>'}</span>
+      <span class="te-open">Aç →</span>
+    </button>
+  `).join('');
+}
+
+function renderReportGrid() {
+  const grid = $('#reportGrid');
+  if (!grid) return;
+  grid.innerHTML = Object.entries(REPORTS).map(([key, r]) => `
+    <article class="report-card">
+      <span class="report-icon">${r.icon}</span>
+      <h2>${esc(r.title)}</h2>
+      <p>${esc(r.desc)}</p>
+      <footer>
+        <span>${esc(scopeHint(key))}</span>
+        <button class="text-btn" data-report-key="${key}">Aç →</button>
+      </footer>
+    </article>
+  `).join('');
+}
+
+function scopeHint(key) {
+  const scope = REPORTS[key].scope;
+  if (scope.includes('visit')) return 'Ziyaret seçilebilir';
+  if (scope.includes('standard')) return 'Standart seçilebilir';
+  if (scope.includes('siteOptional')) return 'Portföy veya tek tesis';
+  if (scope.includes('site')) return 'Tesis seçilebilir';
+  return 'Portföy geneli';
+}
+
+/* ------------------------------------------------------------- report modal */
+
+export function openReport(key, selection) {
+  if (!REPORTS[key]) return;
+  current = { key, ...defaultSelection(key), ...(selection || {}) };
+  paintReport();
+  $('#modal').classList.remove('hidden');
+}
+
+function paintReport() {
+  const report = REPORTS[current.key];
   const content = $('#modalContent');
-  const modal = $('#modal');
-  if (!content || !modal) return;
-  
-  const reportDetails = {
-    r1: { title: "BRCGS Gıda Güvenliği Denetim Raporu", company: "Acme Foods", date: "12 Temmuz 2026", auditor: "Seda Kaya", stationsChecked: "8/8", healthScore: "62/100", status: "Kritik Aksiyon Gerekli" },
-    r2: { title: "Aylık Rutin İlaçlama Raporu", company: "Kuzey Lojistik", date: "11 Temmuz 2026", auditor: "Mert Kaya", stationsChecked: "7/7", healthScore: "68/100", status: "İzleme Gerekli" },
-    r3: { title: "AIB Hijyen Standardı Uyum Belgesi", company: "Aster Hospital", date: "10 Temmuz 2026", auditor: "Ece Yılmaz", stationsChecked: "6/6", healthScore: "74/100", status: "Uygun" }
-  };
-  
-  const r = reportDetails[reportId] || reportDetails.r1;
-  
+  if (!content) return;
+
   content.innerHTML = `
-    <div style="padding:10px; max-height:85vh; overflow-y:auto; color:var(--ink);">
-      <div style="display:flex; justify-content:space-between; align-items:start; border-bottom:2px solid var(--blue); padding-bottom:12px; margin-bottom:16px;">
-        <div>
-          <h2 style="margin:0; font-size:18px; color:var(--blue);">${r.title}</h2>
-          <p style="margin:3px 0 0; font-size:11px; color:var(--muted)">Ladybug Enterprise Operations Cloud Raporlama</p>
-        </div>
-        <div style="text-align:right;">
-          <strong style="font-size:14px;">LADYBUG</strong>
-          <div style="font-size:9px; color:var(--muted)">Sertifika No: LADY-${Math.floor(10000+Math.random()*90000)}</div>
-        </div>
-      </div>
-      
-      <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; font-size:12px; margin-bottom:16px;">
-        <div>
-          <p style="margin:4px 0;">Müşteri: <b>${r.company}</b></p>
-          <p style="margin:4px 0;">Denetleyen Yetkili: <b>${r.auditor}</b></p>
-          <p style="margin:4px 0;">Denetim Tarihi: <b>${r.date}</b></p>
-        </div>
-        <div>
-          <p style="margin:4px 0;">Kontrol Edilen İstasyon: <b>${r.stationsChecked}</b></p>
-          <p style="margin:4px 0;">Tesis Sağlık Skoru: <b style="color:var(--red); font-size:13px;">${r.healthScore}</b></p>
-          <p style="margin:4px 0;">Uyum Durumu: <span class="status-chip ${r.status.includes('Kritik') ? 'critical' : 'warning'}" style="padding:2px 6px; font-size:9px;">${r.status}</span></p>
-        </div>
-      </div>
-      
-      <p class="overline">Bulgu ve İstasyon İnceleme Özeti</p>
-      <table style="width:100%; border-collapse:collapse; font-size:11px; margin-bottom:20px; margin-top:6px; border:1px solid var(--line);">
-        <thead>
-          <tr style="background:var(--soft); text-align:left;">
-            <th style="padding:6px; border-bottom:1px solid var(--line);">İstasyon</th>
-            <th style="padding:6px; border-bottom:1px solid var(--line);">Tür</th>
-            <th style="padding:6px; border-bottom:1px solid var(--line);">Son Bulgu</th>
-            <th style="padding:6px; border-bottom:1px solid var(--line);">Yem</th>
-            <th style="padding:6px; border-bottom:1px solid var(--line);">Durum</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr style="border-bottom:1px solid var(--line);">
-            <td style="padding:6px; font-weight:700;">R-01</td>
-            <td style="padding:6px;">Kemirgen Yem</td>
-            <td style="padding:6px;">Bulgu Yok</td>
-            <td style="padding:6px;">%100 Sağlam</td>
-            <td style="padding:6px;"><span class="status-chip healthy" style="padding:2px 4px;">Temiz</span></td>
-          </tr>
-          <tr style="border-bottom:1px solid var(--line);">
-            <td style="padding:6px; font-weight:700;">C-01</td>
-            <td style="padding:6px;">Yürüyen Haşere</td>
-            <td style="padding:6px; color:var(--red); font-weight:700;">4 Hamamböceği</td>
-            <td style="padding:6px; color:var(--red);">Tüketildi</td>
-            <td style="padding:6px;"><span class="status-chip critical" style="padding:2px 4px;">Aktivite</span></td>
-          </tr>
-          <tr style="border-bottom:1px solid var(--line);">
-            <td style="padding:6px; font-weight:700;">F-01</td>
-            <td style="padding:6px;">Uçan Haşere</td>
-            <td style="padding:6px; color:var(--red); font-weight:700;">12 Sinek</td>
-            <td style="padding:6px;">%100 Sağlam</td>
-            <td style="padding:6px;"><span class="status-chip critical" style="padding:2px 4px;">Aktivite</span></td>
-          </tr>
-          <tr>
-            <td style="padding:6px; font-weight:700;">ILT-01</td>
-            <td style="padding:6px;">UV Cihaz</td>
-            <td style="padding:6px;">Bulgu Yok</td>
-            <td style="padding:6px; color:var(--muted);">Yem Yok</td>
-            <td style="padding:6px;"><span class="status-chip warning" style="padding:2px 4px;">Hasarlı</span></td>
-          </tr>
-        </tbody>
-      </table>
-      
-      <p class="overline">TEKNİSYEN / OPERATÖR DİJİTAL İMZASI</p>
-      <div style="display:flex; gap:16px; align-items:center; margin-top:8px;">
-        <div style="border:1px solid var(--line); border-radius:6px; width:220px; height:70px; background:#fafafa; display:flex; justify-content:center; align-items:center; position:relative; overflow:hidden;">
-          <span style="font-family:Arial, sans-serif; font-style:italic; font-size:24px; color:var(--blue); font-weight:700; transform: rotate(-5deg); letter-spacing:1px; user-select:none;">${r.auditor}</span>
-          <div style="position:absolute; bottom:2px; font-size:7px; color:#aaa;">Doğrulanmış Dijital İmza Mührü</div>
-        </div>
-        <div style="font-size:11px; color:var(--muted); line-height:1.5;">
-          Bu belge 5070 Sayılı Elektronik İmza Kanunu kapsamında <b>${r.auditor}</b> tarafından biyometrik/dijital imza doğrulaması ile imzalanarak arşive eklenmiştir.
-        </div>
-      </div>
-      
-      <div style="margin-top:24px; display:flex; gap:10px; justify-content:flex-end; border-top:1px solid var(--line); padding-top:14px;">
-        <button class="secondary-btn" onclick="document.querySelector('#modal').classList.add('hidden')">Raporu Kapat</button>
-        <button class="primary-btn" onclick="window.print()">📥 PDF İndir & Yazdır</button>
-      </div>
-    </div>
-  `;
-  
-  modal.classList.remove('hidden');
+    <div class="report-doc-shell">
+      ${toolbar(report)}
+      <div class="report-doc" id="reportDoc">${report.build(current)}</div>
+      <footer class="report-doc-actions no-print">
+        <button class="secondary-btn" data-report-action="close">Kapat</button>
+        <button class="secondary-btn" data-report-action="csv">⭳ CSV indir</button>
+        <button class="primary-btn" data-report-action="print">🖨 PDF olarak yazdır</button>
+      </footer>
+    </div>`;
 }
 
+function toolbar(report) {
+  const parts = [];
+
+  if (report.scope.includes('site') || report.scope.includes('siteOptional')) {
+    const chips = initial.sites.map((s) =>
+      `<button class="rep-chip ${current.siteId === s.id ? 'active' : ''}" data-report-site="${s.id}">${esc(s.name)}</button>`).join('');
+    parts.push(`<div class="rep-chips"><span class="rep-chips-label">Tesis</span>${
+      report.scope.includes('siteOptional')
+        ? `<button class="rep-chip ${!current.siteId ? 'active' : ''}" data-report-site="">Tüm portföy</button>` : ''
+    }${chips}</div>`);
+  }
+
+  if (report.scope.includes('visit')) {
+    // Most recent first — the visit a technician just closed is the one people
+    // actually want to print.
+    const visits = visitsForSite(current.siteId).slice(-8).reverse();
+    parts.push(`<div class="rep-chips"><span class="rep-chips-label">Ziyaret</span>${
+      visits.map((v) => `<button class="rep-chip ${current.visit && current.visit.id === v.id ? 'active' : ''}" data-report-visit="${v.id}">${esc(v.date)}${v.totals.all ? ` · ${v.totals.all}` : ''}</button>`).join('')
+    }</div>`);
+  }
+
+  if (report.scope.includes('standard')) {
+    parts.push(`<div class="rep-chips"><span class="rep-chips-label">Standart</span>${
+      STANDARDS.map((s) => `<button class="rep-chip ${current.standardId === s.id ? 'active' : ''}" data-report-standard="${s.id}">${esc(s.name)}</button>`).join('')
+    }</div>`);
+  }
+
+  return parts.length ? `<div class="report-toolbar no-print">${parts.join('')}</div>` : '';
+}
+
+/* ----------------------------------------------------------------- handlers */
 
 export function reportCardClicks(e) {
-    const report=e.target.closest('[data-report]');
-    if(report) {
-      const rId = report.dataset.reportId || 'r1';
-      openReportModal(rId);
+  const card = e.target.closest('[data-report-key]');
+  if (card) {
+    openReport(card.dataset.reportKey);
+    return true;
+  }
+
+  const badge = e.target.closest('[data-standard]');
+  if (badge) {
+    openReport('audit', { standardId: badge.dataset.standard });
+    return true;
+  }
+
+  const audit = e.target.closest('[data-third-eye]');
+  if (audit) {
+    const visit = getVisits().find((v) => v.id === audit.dataset.thirdEye);
+    if (visit) openReport('visit', { siteId: visit.siteId, visit });
+    return true;
+  }
+  return false;
+}
+
+export function reportModalClicks(e) {
+  if (!current) return false;
+
+  const siteChip = e.target.closest('[data-report-site]');
+  if (siteChip) {
+    current.siteId = siteChip.dataset.reportSite || null;
+    // A visit-scoped report must re-anchor onto a visit that exists at the
+    // newly selected site, or build() would render the previous site's visit.
+    if (REPORTS[current.key].scope.includes('visit')) {
+      const visits = visitsForSite(current.siteId);
+      current.visit = visits[visits.length - 1];
+    }
+    paintReport();
+    return true;
+  }
+
+  const visitChip = e.target.closest('[data-report-visit]');
+  if (visitChip) {
+    current.visit = getVisits().find((v) => v.id === visitChip.dataset.reportVisit);
+    paintReport();
+    return true;
+  }
+
+  const stdChip = e.target.closest('[data-report-standard]');
+  if (stdChip) {
+    current.standardId = stdChip.dataset.reportStandard;
+    paintReport();
+    return true;
+  }
+
+  const action = e.target.closest('[data-report-action]');
+  if (action) {
+    const report = REPORTS[current.key];
+    const what = action.dataset.reportAction;
+
+    if (what === 'close') {
+      $('#modal').classList.add('hidden');
+      current = null;
       return true;
     }
+    if (what === 'print') {
+      printElement('#reportDoc', { title: report.filename(current) });
+      return true;
+    }
+    if (what === 'csv') {
+      const { rows, columns } = report.csv(current);
+      if (!rows.length) { toast('Bu raporda dışa aktarılacak satır yok.'); return true; }
+      downloadCSV(`${report.filename(current)}.csv`, rows, columns);
+      return true;
+    }
+  }
   return false;
 }
 
 export function generateReportSubmit(e) {
-    if(e.target.id==='generateReport'){
-      e.preventDefault();
-      $('#modal').classList.add('hidden');
-      toast('Rapor oluşturuldu. Paylaşım bağlantısı müşteri portalına eklendi.');
-    }
-    
-    // Admin floor plan inspection form save
+  if (e.target.id === 'generateReport') {
+    e.preventDefault();
+    $('#modal').classList.add('hidden');
+    toast('Rapor oluşturuldu. Paylaşım bağlantısı müşteri portalına eklendi.');
+    return true;
+  }
   return false;
 }
