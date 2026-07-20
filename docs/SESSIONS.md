@@ -82,14 +82,14 @@ Update this table when you claim or release files.
 | Core / bootstrap | `src/core/**`, `src/app.js` | — | free |
 | Catalog data | `src/data/catalog.js` | Session C | released — 1-1/1-3/1-4/1-5/1-7 landed on `phase-1a` |
 | Seed + history | `src/data/seed.js`, `src/data/history.js` | Session A | released — 0b-1 landed on `phase-0b` |
-| Charts / export | `src/ui/charts.js`, `src/ui/export.js` | — | free (0c landed; API stable — see `demo/charts.html`) |
+| Charts / export | `src/ui/charts.js`, `src/ui/export.js` | — | free — Session F consumed both unchanged; 0c API covered every Phase 2 chart |
 | Modal / calendar | `src/ui/modal.js`, `calendar.js` | — | free |
 | Signature | `src/ui/signature.js` | Session C | released — 1-1/1-3/1-4/1-5/1-7 landed on `phase-1a` |
 | Dashboard | `src/views/dashboard.js` | — | free |
 | Sites | `src/views/sites.js` | — | free |
 | Work orders | `src/views/work.js` | — | free |
 | Team | `src/views/team.js` | — | free |
-| Insights | `src/views/insights.js` | Session A | released — 0b-2 landed on `phase-0b` |
+| Insights | `src/views/insights.js` | Session F | released — 2-1 / 2-2 / 2-3 landed on `phase-2a` |
 | Reports | `src/views/reports.js` | — | free |
 | Company detail | `src/views/companyDetail.js` | Session C | released — 1-1/1-3/1-4/1-5/1-7 landed on `phase-1a` |
 | Mobile | `src/views/mobile.js` | Session C | released — 1-1/1-3/1-4/1-5/1-7 landed on `phase-1a` |

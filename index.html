@@ -151,7 +151,101 @@
           <article class="panel roster-panel"><div class="panel-header"><h2>Bugünkü ekip</h2><button class="text-btn">Ekip yönetimi →</button></div><div id="roster" class="roster"></div></article>
         </section>
 
-        <section id="insights" class="view"><div class="page-heading compact"><div><p class="overline">ANALİZLER</p><h1>Risk trendleri</h1><p>Portföyünüzdeki aktiviteyi tür, tesis ve zaman bazında izleyin.</p></div><select id="trendFilter"><option value="all">Tüm bulgu türleri</option><option value="rodent">Kemirgen</option><option value="flying">Uçan haşere</option><option value="crawler">Yürüyen haşere</option></select></div><div class="analytics-grid"><article class="panel chart-panel"><div class="panel-header"><div><h2>Aktivite trendi</h2><p id="trendCaption">Son 12 ay · toplam bulgu</p></div><b class="positive">↓ %18 iyileşme</b></div><div id="trendChart" class="chart"></div></article><article class="panel"><p class="overline">EN ÇOK ETKİLENEN TESİSLER</p><h2>Risk sıralaması</h2><div id="ranking" class="ranking"></div></article>
+        <section id="insights" class="view">
+          <div class="page-heading compact">
+            <div>
+              <p class="overline">ANALİZLER</p>
+              <h1>Risk trendleri</h1>
+              <p>Portföyünüzdeki aktiviteyi tür, tesis ve zaman bazında izleyin.</p>
+            </div>
+          </div>
+          <div class="analytics-grid">
+            <article class="panel chart-panel">
+              <div class="panel-header">
+                <div><h2>Aktivite trendi</h2><p id="trendCaption">Son 12 ay · toplam bulgu</p></div>
+                <div class="chart-actions">
+                  <button type="button" class="text-btn" data-chart-download="svg" data-chart-target="#trendChart" data-chart-name="aktivite_trendi">SVG</button>
+                  <button type="button" class="text-btn" data-chart-download="png" data-chart-target="#trendChart" data-chart-name="aktivite_trendi">PNG</button>
+                </div>
+              </div>
+              <div id="trendPestChips" class="chip-row"></div>
+              <div id="trendChart"></div>
+            </article>
+            <article class="panel">
+              <p class="overline">EN ÇOK ETKİLENEN TESİSLER</p>
+              <h2>Risk sıralaması</h2>
+              <div id="ranking" class="ranking"></div>
+            </article>
+
+            <!-- 2-1: multi-location / city comparison -->
+            <article class="panel" style="grid-column: span 2; margin-top: 14px;">
+              <div class="panel-header" style="margin-bottom:10px;">
+                <div>
+                  <p class="overline">ÇOK LOKASYONLU KARŞILAŞTIRMA</p>
+                  <h2 style="margin-top:4px;">Tesis &amp; bölge karşılaştırması</h2>
+                  <p id="compareNote" style="font-size:11px; color:var(--muted); margin-top:2px;"></p>
+                </div>
+                <div id="compareScopeChips" class="chip-row"></div>
+              </div>
+              <div id="compareSiteChips" class="chip-row" style="margin-bottom:12px;"></div>
+              <div class="compare-grid">
+                <div class="compare-cell">
+                  <div class="chart-cell-head">
+                    <b>Tür dağılımı · 12 ay toplamı</b>
+                    <div class="chart-actions">
+                      <button type="button" class="text-btn" data-chart-download="svg" data-chart-target="#compareCompositionChart" data-chart-name="tesis_karsilastirma">SVG</button>
+                      <button type="button" class="text-btn" data-chart-download="png" data-chart-target="#compareCompositionChart" data-chart-name="tesis_karsilastirma">PNG</button>
+                    </div>
+                  </div>
+                  <div id="compareCompositionChart"></div>
+                </div>
+                <div class="compare-cell">
+                  <div class="chart-cell-head">
+                    <b>Aylık seyir · lokasyon bazında</b>
+                    <div class="chart-actions">
+                      <button type="button" class="text-btn" data-chart-download="svg" data-chart-target="#compareTrendChart" data-chart-name="lokasyon_trendi">SVG</button>
+                      <button type="button" class="text-btn" data-chart-download="png" data-chart-target="#compareTrendChart" data-chart-name="lokasyon_trendi">PNG</button>
+                    </div>
+                  </div>
+                  <div id="compareTrendChart"></div>
+                </div>
+              </div>
+            </article>
+
+            <!-- 2-3: recommendation statistics -->
+            <article class="panel" style="grid-column: span 2; margin-top: 14px;">
+              <div class="panel-header" style="margin-bottom:14px;">
+                <div>
+                  <p class="overline">ÖNERİ İSTATİSTİKLERİ</p>
+                  <h2 style="margin-top:4px;">Açılan · aksiyon alınan · onaylanan</h2>
+                  <p id="recSplitNote" style="font-size:11px; color:var(--muted); margin-top:2px;"></p>
+                </div>
+              </div>
+              <div id="recFunnelCards" class="metric-grid" style="margin-bottom:16px;"></div>
+              <div class="compare-grid">
+                <div class="compare-cell">
+                  <div class="chart-cell-head">
+                    <b>Kategori dağılımı</b>
+                    <div class="chart-actions">
+                      <button type="button" class="text-btn" data-chart-download="svg" data-chart-target="#recCategoryChart" data-chart-name="oneri_kategorileri">SVG</button>
+                      <button type="button" class="text-btn" data-chart-download="png" data-chart-target="#recCategoryChart" data-chart-name="oneri_kategorileri">PNG</button>
+                    </div>
+                  </div>
+                  <div id="recCategoryChart"></div>
+                </div>
+                <div class="compare-cell">
+                  <div class="chart-cell-head">
+                    <b>Lokasyon bazında kapanış</b>
+                    <div class="chart-actions">
+                      <button type="button" class="text-btn" data-chart-download="svg" data-chart-target="#recBySiteChart" data-chart-name="oneri_kapanis">SVG</button>
+                      <button type="button" class="text-btn" data-chart-download="png" data-chart-target="#recBySiteChart" data-chart-name="oneri_kapanis">PNG</button>
+                    </div>
+                  </div>
+                  <div id="recBySiteChart"></div>
+                </div>
+              </div>
+            </article>
+
           <!-- AI Risk prediction card -->
           <article class="panel" style="grid-column: span 2; margin-top: 14px;">
             <div class="panel-header" style="margin-bottom:14px;">
@@ -161,7 +255,7 @@
               </div>
               <span class="live-pill" style="color:var(--violet); background:#f1edff; padding:4px 8px; border-radius:6px; font-size:10px; font-weight:700;"><i></i> AI AKTİF</span>
             </div>
-            <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:14px;" id="aiRiskEngineGrid">
+            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap:14px;" id="aiRiskEngineGrid">
               <!-- Dynamically populated in app.js -->
             </div>
           </article>
