@@ -10,6 +10,7 @@ import {
 import { $, $$, toast } from './core/dom.js';
 import { state, save, load, recalculateSiteStats } from './core/state.js';
 import { users } from './core/auth.js';
+import { ui } from './core/session.js';
 
 // Clean stale data from previous versions
 localStorage.removeItem("ladybug-product-demo"); localStorage.removeItem("insectram-product-demo"); localStorage.removeItem("insectram-ops");
@@ -77,7 +78,7 @@ function applyRoleAccess() {
     $('#newWorkOrder')?.classList.add('hidden');
     $('#newWorkOrderSecondary')?.classList.add('hidden');
     
-    activeSiteId = 's1'; 
+    ui.activeSiteId = 's1'; 
     setView('companyDetail');
     
     $('#backToSitesFromCompBtn')?.classList.add('hidden');
@@ -113,15 +114,8 @@ function logout() {
   toast("Oturum kapatıldı.");
 }
 
-let activeSiteId = null;
-let activeStationCode = null;
 
 // Mobile app workflow states
-let mobJob = null;
-let mobArrived = false;
-let mobQrStarted = false;
-let mobOfflineReady = false;
-let activeMobileStationCode = null;
 
 
 function setView(view){
@@ -444,8 +438,8 @@ function render(){
 
 // Company Detail Page & Tabs Management
 function showCompanyDetail(siteId) {
-  activeSiteId = siteId;
-  activeStationCode = null;
+  ui.activeSiteId = siteId;
+  ui.activeStationCode = null;
   const site = state.sites.find(s => s.id === siteId);
   if (!site) return;
   
@@ -763,7 +757,7 @@ function renderStationMarkers(stations, filterType = 'all') {
     
     const marker = document.createElement('div');
     marker.className = `station-marker ${s.checked ? s.status : 'unchecked'}`;
-    if (s.code === activeStationCode) marker.classList.add('selected');
+    if (s.code === ui.activeStationCode) marker.classList.add('selected');
     
     marker.style.left = `${s.x}%`;
     marker.style.top = `${s.y}%`;
@@ -791,8 +785,8 @@ function renderStationMarkers(stations, filterType = 'all') {
 }
 
 function showStationDetail(code) {
-  activeStationCode = code;
-  const site = state.sites.find(s => s.id === activeSiteId);
+  ui.activeStationCode = code;
+  const site = state.sites.find(s => s.id === ui.activeSiteId);
   if (!site) return;
   const s = site.stations.find(st => st.code === code);
   if (!s) return;
@@ -850,15 +844,15 @@ function renderMobileRoute() {
 }
 
 function showMobileJobDetail(work) {
-  mobJob = work;
-  mobArrived = work.status === 'arrived_gps' || work.status === 'started_by_first_qr' || work.completed;
-  mobQrStarted = work.status === 'started_by_first_qr' || work.completed;
+  ui.mobJob = work;
+  ui.mobArrived = work.status === 'arrived_gps' || work.status === 'started_by_first_qr' || work.completed;
+  ui.mobQrStarted = work.status === 'started_by_first_qr' || work.completed;
   
   const site = state.sites.find(s => s.id === work.siteId) || state.sites[0];
   
   // Reset download state for this job unless downloaded earlier
-  if (site.downloaded) mobOfflineReady = true;
-  else mobOfflineReady = false;
+  if (site.downloaded) ui.mobOfflineReady = true;
+  else ui.mobOfflineReady = false;
   
   $('#mobJobCompany').textContent = site.company.toUpperCase();
   $('#mobJobSiteName').textContent = site.name;
@@ -874,7 +868,7 @@ function showMobileJobDetail(work) {
   // 1. GPS Arrival
   const btnGps = $('#btnMobArrived');
   const indGps = $('#indicatorGpsVerified');
-  if (mobArrived) {
+  if (ui.mobArrived) {
     btnGps.classList.add('hidden');
     indGps.classList.remove('hidden');
     if ($('#gpsCoordsText')) {
@@ -892,9 +886,9 @@ function showMobileJobDetail(work) {
   const cardQr = $('#cardQrStart');
   const btnQr = $('#btnMobScanFirstQr');
   const indQr = $('#indicatorQrVerified');
-  cardQr.classList.toggle('disabled', !mobArrived);
-  btnQr.disabled = !mobArrived;
-  if (mobQrStarted) {
+  cardQr.classList.toggle('disabled', !ui.mobArrived);
+  btnQr.disabled = !ui.mobArrived;
+  if (ui.mobQrStarted) {
     btnQr.classList.add('hidden');
     indQr.classList.remove('hidden');
   } else {
@@ -907,10 +901,10 @@ function showMobileJobDetail(work) {
   const btnViewPlan = $('#btnMobViewPlan');
   const btnDownload = $('#btnMobDownloadOffline');
   const indOffline = $('#indicatorOfflineReady');
-  cardMap.classList.toggle('disabled', !mobQrStarted);
-  btnViewPlan.disabled = !mobQrStarted;
-  btnDownload.disabled = !mobQrStarted;
-  if (mobOfflineReady) {
+  cardMap.classList.toggle('disabled', !ui.mobQrStarted);
+  btnViewPlan.disabled = !ui.mobQrStarted;
+  btnDownload.disabled = !ui.mobQrStarted;
+  if (ui.mobOfflineReady) {
     btnDownload.classList.add('hidden');
     indOffline.classList.remove('hidden');
   } else {
@@ -921,17 +915,17 @@ function showMobileJobDetail(work) {
   
   // 4. Stations List
   const cardStations = $('#cardStationsList');
-  cardStations.classList.toggle('disabled', !mobQrStarted);
+  cardStations.classList.toggle('disabled', !ui.mobQrStarted);
   
   // 4b. Chemical Usage
   const cardChem = $('#cardMobChemicalUsage');
   if (cardChem) {
-    cardChem.classList.toggle('disabled', !mobQrStarted);
+    cardChem.classList.toggle('disabled', !ui.mobQrStarted);
   }
   renderMobChemicalsList(site);
   
   const checked = site.stations.filter(s => s.checked).length;
-  const isComplete = mobQrStarted && checked === site.stations.length;
+  const isComplete = ui.mobQrStarted && checked === site.stations.length;
   const cardSig = $('#cardSignature');
   if (cardSig) {
     cardSig.classList.toggle('disabled', !isComplete);
@@ -951,13 +945,13 @@ function showMobileJobDetail(work) {
 
 function updateSimStepsHighlight() {
   $$('.sim-steps-list li').forEach(x => x.classList.remove('active-step'));
-  if (!mobArrived) {
+  if (!ui.mobArrived) {
     $('#step1').classList.add('active-step');
     $('#step2').classList.add('active-step');
-  } else if (!mobQrStarted) {
+  } else if (!ui.mobQrStarted) {
     $('#step3').classList.add('active-step');
   } else {
-    const site = state.sites.find(s => s.id === mobJob.siteId);
+    const site = state.sites.find(s => s.id === ui.mobJob.siteId);
     const checkedCount = site ? site.stations.filter(s => s.checked).length : 0;
     const totalCount = site ? site.stations.length : 8;
     if (checkedCount < totalCount) {
@@ -984,24 +978,24 @@ function renderMobileMiniGrid(site) {
     return `<button class="mob-station-mini-btn ${btnClass}" data-mob-station-code="${s.code}">${s.code}</button>`;
   }).join('');
   
-  const isComplete = mobQrStarted && checked === total;
+  const isComplete = ui.mobQrStarted && checked === total;
   const cardSig = $('#cardSignature');
   if (cardSig) {
     cardSig.classList.toggle('disabled', !isComplete);
-    if (isComplete && !mobJob.completed) {
+    if (isComplete && !ui.mobJob.completed) {
       initSignaturePads();
     }
   }
   
   // Enable complete form button when all stations checked
-  $('#btnMobSaveForm').disabled = !isComplete || mobJob.completed;
+  $('#btnMobSaveForm').disabled = !isComplete || ui.mobJob.completed;
 }
 
 function showMobileMap() {
   $('#pageMobileJobDetail').classList.add('hidden');
   $('#pageMobileMap').classList.remove('hidden');
   
-  const site = state.sites.find(s => s.id === mobJob.siteId) || state.sites[0];
+  const site = state.sites.find(s => s.id === ui.mobJob.siteId) || state.sites[0];
   const mobileWrapper = $('#mobileBlueprintWrapper');
   const desktopSvg = $('#blueprintWrapper svg').cloneNode(true);
   
@@ -1028,8 +1022,8 @@ function showMobileMap() {
 }
 
 function showMobileInspect(stationCode) {
-  activeMobileStationCode = stationCode;
-  const site = state.sites.find(s => s.id === mobJob.siteId) || state.sites[0];
+  ui.activeMobileStationCode = stationCode;
+  const site = state.sites.find(s => s.id === ui.mobJob.siteId) || state.sites[0];
   const s = site.stations.find(st => st.code === stationCode);
   if (!s) return;
   
@@ -1331,7 +1325,7 @@ function printQrCodeSticker(code) {
   const modal = $('#modal');
   if (!content || !modal) return;
   
-  const site = state.sites.find(s => s.id === activeSiteId);
+  const site = state.sites.find(s => s.id === ui.activeSiteId);
   if (!site) return;
   const s = site.stations.find(st => st.code === code);
   if (!s) return;
@@ -2038,8 +2032,8 @@ function bind(){
     if(e.target.closest('#newWorkOrder')||e.target.closest('#newWorkOrderSecondary')) modal('work');
     if(e.target.closest('#addSite')) modal('site');
     if(e.target.closest('#btnEditSiteContract')) {
-      if (activeSiteId) {
-        modal('editSite', activeSiteId);
+      if (ui.activeSiteId) {
+        modal('editSite', ui.activeSiteId);
       } else {
         toast("Hata: Aktif seçili tesis bulunamadı.");
       }
@@ -2133,7 +2127,7 @@ function bind(){
     // Heatmap mode toggler
     const heatToggle = e.target.closest('#heatmapToggleBtn');
     if (heatToggle) {
-      const site = state.sites.find(s => s.id === activeSiteId);
+      const site = state.sites.find(s => s.id === ui.activeSiteId);
       if (site) {
         renderStationMarkers(site.stations, $$('[data-station-filter].active')[0]?.dataset.stationFilter || 'all');
       }
@@ -2141,7 +2135,7 @@ function bind(){
 
     // Print QR code sticker label
     if (e.target.id === 'printStationQrBtn') {
-      printQrCodeSticker(activeStationCode);
+      printQrCodeSticker(ui.activeStationCode);
       return;
     }
 
@@ -2149,7 +2143,7 @@ function bind(){
     const toggleRecBtn = e.target.closest('.toggle-rec-btn');
     if (toggleRecBtn) {
       const idx = parseInt(toggleRecBtn.dataset.recIndex);
-      const site = state.sites.find(s => s.id === activeSiteId);
+      const site = state.sites.find(s => s.id === ui.activeSiteId);
       if (site && site.recommendations && site.recommendations[idx]) {
         const r = site.recommendations[idx];
         r.status = r.status === 'open' ? 'resolved' : 'open';
@@ -2184,7 +2178,7 @@ function bind(){
     const sf = e.target.closest('[data-station-filter]');
     if (sf) {
       $$('[data-station-filter]').forEach(x => x.classList.toggle('active', x === sf));
-      const site = state.sites.find(s => s.id === activeSiteId);
+      const site = state.sites.find(s => s.id === ui.activeSiteId);
       if (site) {
         // Clear active room rect highlights when clicking manual filters
         $$('.blueprint-room').forEach(r => r.classList.remove('active'));
@@ -2202,7 +2196,7 @@ function bind(){
       $$('.blueprint-room').forEach(r => r.classList.remove('active'));
       $$('[data-station-filter]').forEach(x => x.classList.toggle('active', x.dataset.stationFilter === 'all'));
       
-      const site = state.sites.find(s => s.id === activeSiteId);
+      const site = state.sites.find(s => s.id === ui.activeSiteId);
       if (!site) return;
       
       if (alreadyActive) {
@@ -2238,9 +2232,21 @@ function bind(){
       btnGps.textContent = "⌛ GPS Aranıyor...";
       btnGps.disabled = true;
       
+      // The browser fires neither callback while a geolocation permission
+      // prompt is pending, and its own `timeout` does not run in that state.
+      // Without a watchdog the button sits disabled on "GPS Aranıyor..."
+      // forever — which bricks the headline step of the demo whenever the
+      // venue blocks location. Guarantee a fallback, and make the handler
+      // idempotent so a late real fix-up cannot double-apply.
+      let gpsSettled = false;
+      const GPS_FALLBACK_MS = 2500;
+
       const proceedGpsArrival = (lat, lon) => {
-        mobArrived = true;
-        mobJob.status = 'arrived_gps';
+        if (gpsSettled) return;
+        gpsSettled = true;
+        clearTimeout(gpsWatchdog);
+        ui.mobArrived = true;
+        ui.mobJob.status = 'arrived_gps';
         save();
         btnGps.classList.add('hidden');
         $('#indicatorGpsVerified').classList.remove('hidden');
@@ -2255,6 +2261,11 @@ function bind(){
         updateSimStepsHighlight();
       };
 
+      const gpsWatchdog = setTimeout(() => {
+        addTelemetryLog("UYARI: GPS yanıt vermedi. Simüle edilmiş koordinatlar kullanılıyor.");
+        proceedGpsArrival(41.0082, 28.9784);
+      }, GPS_FALLBACK_MS);
+
       if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
           (pos) => {
@@ -2264,7 +2275,7 @@ function bind(){
             addTelemetryLog("UYARI: Gerçek GPS alınamadı. Simüle edilmiş koordinatlar kullanılıyor.");
             proceedGpsArrival(41.0082, 28.9784);
           },
-          { enableHighAccuracy: true, timeout: 5000 }
+          { enableHighAccuracy: true, timeout: GPS_FALLBACK_MS }
         );
       } else {
         addTelemetryLog("UYARI: Tarayıcıda GPS servisi bulunamadı. Simüle koordinat kullanılıyor.");
@@ -2273,19 +2284,19 @@ function bind(){
     }
     
     if (e.target.id === 'btnMobScanFirstQr') {
-      const site = state.sites.find(s => s.id === mobJob.siteId) || state.sites[0];
+      const site = state.sites.find(s => s.id === ui.mobJob.siteId) || state.sites[0];
       addTelemetryLog("Kamera açılıyor... Giriş QR Kodu taraması bekleniyor.");
       openMobileScanner(
         "Giriş QR Kodu Tara",
         "Tesis giriş kapısındaki kontrol ünitesinde yer alan QR barkodunu okutun.",
         site.stations,
         (scannedCode) => {
-          mobQrStarted = true;
-          mobJob.status = 'started_by_first_qr';
-          mobJob.realWorkStartedAt = new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
-          mobJob.startedTimestamp = Date.now();
+          ui.mobQrStarted = true;
+          ui.mobJob.status = 'started_by_first_qr';
+          ui.mobJob.realWorkStartedAt = new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+          ui.mobJob.startedTimestamp = Date.now();
           save();
-          showMobileJobDetail(mobJob);
+          showMobileJobDetail(ui.mobJob);
           addTelemetryLog(`İLK QR OKUTULDU: ${scannedCode} barkodu ile gerçek mesai başlangıcı tescil edildi!`);
           toast("Mesai gerçek anlamda başladı! İstasyonlar kontrol edilebilir.");
         }
@@ -2324,8 +2335,8 @@ function bind(){
         if (progress >= 100) {
           clearInterval(interval);
           setTimeout(() => {
-            mobOfflineReady = true;
-            const site = state.sites.find(s => s.id === mobJob.siteId);
+            ui.mobOfflineReady = true;
+            const site = state.sites.find(s => s.id === ui.mobJob.siteId);
             if (site) site.downloaded = true;
             save();
             bar.classList.add('hidden');
@@ -2350,8 +2361,8 @@ function bind(){
     }
     
     if (e.target.id === 'btnMobSaveInspection') {
-      const site = state.sites.find(s => s.id === mobJob.siteId) || state.sites[0];
-      const s = site.stations.find(st => st.code === activeMobileStationCode);
+      const site = state.sites.find(s => s.id === ui.mobJob.siteId) || state.sites[0];
+      const s = site.stations.find(st => st.code === ui.activeMobileStationCode);
       if (s) {
         s.checked = true;
         s.baitStatus = $('#mobInpBaitStatus').value;
@@ -2378,7 +2389,7 @@ function bind(){
           s.findings = [];
         }
         
-        s.controlledBy = mobJob.tech;
+        s.controlledBy = ui.mobJob.tech;
         s.lastControl = "Bugün, " + new Date().toLocaleTimeString('tr-TR', {hour: '2-digit', minute:'2-digit'});
         
         if (s.pestType !== 'none') {
@@ -2394,39 +2405,39 @@ function bind(){
         toast(`${s.code} kontrolü kaydedildi.`);
         
         $('#pageMobileInspect').classList.add('hidden');
-        showMobileJobDetail(mobJob);
+        showMobileJobDetail(ui.mobJob);
       }
     }
     
     if (e.target.id === 'btnMobSaveForm') {
-      mobJob.completed = true;
-      mobJob.status = 'completed';
+      ui.mobJob.completed = true;
+      ui.mobJob.status = 'completed';
       state.completed++;
       
       const canvasCust = $('#sigCanvasCustomer');
       const canvasTech = $('#sigCanvasTech');
       if (canvasCust && canvasTech) {
-        mobJob.customerSignature = canvasCust.toDataURL();
-        mobJob.techSignature = canvasTech.toDataURL();
+        ui.mobJob.customerSignature = canvasCust.toDataURL();
+        ui.mobJob.techSignature = canvasTech.toDataURL();
       }
       
-      const site = state.sites.find(s => s.id === mobJob.siteId) || state.sites[0];
-      site.last = `Bugün · ${mobJob.tech}`;
+      const site = state.sites.find(s => s.id === ui.mobJob.siteId) || state.sites[0];
+      site.last = `Bugün · ${ui.mobJob.tech}`;
       
       // Calculate visit duration (simulated for quick demo clicks)
-      const durationMs = mobJob.startedTimestamp ? (Date.now() - mobJob.startedTimestamp) : 0;
+      const durationMs = ui.mobJob.startedTimestamp ? (Date.now() - ui.mobJob.startedTimestamp) : 0;
       let durationMin = Math.round(durationMs / 60000);
       if (durationMin < 5) durationMin = 45; // simulate realistic duration for demo
-      mobJob.duration = `${durationMin} dk`;
+      ui.mobJob.duration = `${durationMin} dk`;
       
       // Calculate costs
-      const techRate = state.techRates[mobJob.tech] || 150;
+      const techRate = state.techRates[ui.mobJob.tech] || 150;
       const laborCost = Math.round((durationMin / 60) * techRate);
       
       let chemicalCost = 0;
       const siteChems = site.chemicalsUsed || [];
       siteChems.forEach(cu => {
-        if (cu.workOrderId === mobJob.id) {
+        if (cu.workOrderId === ui.mobJob.id) {
           const chem = chemicalDatabase.find(c => c.id === cu.chemicalId);
           if (chem) {
             const qty = parseFloat(cu.quantity.replace(/[^\d\.]/g, '')) || 0;
@@ -2453,7 +2464,7 @@ function bind(){
         margin: margin,
         duration: `${durationMin} dk`,
         status: 'draft',
-        description: `${mobJob.visitType ? (visitTypes.find(v=>v.code===mobJob.visitType)||{}).name : 'Rutin'} Servis Faturası`
+        description: `${ui.mobJob.visitType ? (visitTypes.find(v=>v.code===ui.mobJob.visitType)||{}).name : 'Rutin'} Servis Faturası`
       };
       
       if (!state.invoices) state.invoices = [];
@@ -2484,7 +2495,7 @@ function bind(){
       const canvas = $('#analyticsCanvas');
       if (canvas) {
         const link = document.createElement('a');
-        link.download = `${activeSiteId}_trend_analizi.png`;
+        link.download = `${ui.activeSiteId}_trend_analizi.png`;
         link.href = canvas.toDataURL();
         link.click();
         toast('Grafik PNG olarak indirildi.');
@@ -2530,12 +2541,12 @@ function bind(){
     // Delete mobile chemical usage
     const deleteMobChemBtn = e.target.closest('.delete-mob-chem-btn');
     if (deleteMobChemBtn) {
-      if (!mobJob) return;
-      const site = state.sites.find(s => s.id === mobJob.siteId);
+      if (!ui.mobJob) return;
+      const site = state.sites.find(s => s.id === ui.mobJob.siteId);
       if (!site) return;
       
       const idx = parseInt(deleteMobChemBtn.dataset.chemIndex);
-      const visitChems = site.chemicalsUsed.filter(cu => cu.workOrderId === mobJob.id);
+      const visitChems = site.chemicalsUsed.filter(cu => cu.workOrderId === ui.mobJob.id);
       const targetChemUse = visitChems[idx];
       
       if (targetChemUse) {
@@ -2607,7 +2618,7 @@ function bind(){
     const downloadBtn = e.target.closest('.download-file-btn');
     if (downloadBtn) {
       const idx = parseInt(downloadBtn.dataset.fileIndex);
-      const site = state.sites.find(s => s.id === activeSiteId);
+      const site = state.sites.find(s => s.id === ui.activeSiteId);
       if (site && site.files && site.files[idx]) {
         toast(`${site.files[idx].name} indirmesi başlatıldı...`);
       }
@@ -2819,11 +2830,11 @@ function bind(){
     // Admin floor plan inspection form save
     if (e.target.id === 'adminInspectionForm') {
       e.preventDefault();
-      if (!activeSiteId || !activeStationCode) return;
+      if (!ui.activeSiteId || !ui.activeStationCode) return;
       
-      const site = state.sites.find(s => s.id === activeSiteId);
+      const site = state.sites.find(s => s.id === ui.activeSiteId);
       if (!site) return;
-      const s = site.stations.find(st => st.code === activeStationCode);
+      const s = site.stations.find(st => st.code === ui.activeStationCode);
       if (!s) return;
       
       const f = new FormData(e.target);
@@ -2863,15 +2874,15 @@ function bind(){
       
       recalculateSiteStats(site);
       save();
-      showCompanyDetail(activeSiteId);
+      showCompanyDetail(ui.activeSiteId);
       toast(`İstasyon ${s.code} denetimi başarıyla kaydedildi.`);
     }
 
     // Company profile file upload form submit
     if (e.target.id === 'companyFileUploadForm') {
       e.preventDefault();
-      if (!activeSiteId) return;
-      const site = state.sites.find(s => s.id === activeSiteId);
+      if (!ui.activeSiteId) return;
+      const site = state.sites.find(s => s.id === ui.activeSiteId);
       if (!site) return;
       
       const inpName = $('#inpUploadFileName');
@@ -2908,8 +2919,8 @@ function bind(){
     // Company profile recommendation form submit
     if (e.target.id === 'companyRecommendationForm') {
       e.preventDefault();
-      if (!activeSiteId) return;
-      const site = state.sites.find(s => s.id === activeSiteId);
+      if (!ui.activeSiteId) return;
+      const site = state.sites.find(s => s.id === ui.activeSiteId);
       if (!site) return;
       
       const inpDesc = $('#inpRecDesc');
@@ -2952,8 +2963,8 @@ function bind(){
     // Company profile chemical form submit
     if (e.target.id === 'companyChemicalForm') {
       e.preventDefault();
-      if (!activeSiteId) return;
-      const site = state.sites.find(s => s.id === activeSiteId);
+      if (!ui.activeSiteId) return;
+      const site = state.sites.find(s => s.id === ui.activeSiteId);
       if (!site) return;
       
       const inpChemSelect = $('#inpChemicalSelect');
@@ -3098,9 +3109,9 @@ function bind(){
     // Mobile Chemical Form submit
     if (e.target.id === 'mobChemicalForm') {
       e.preventDefault();
-      if (!mobJob) return;
+      if (!ui.mobJob) return;
       
-      const site = state.sites.find(s => s.id === mobJob.siteId);
+      const site = state.sites.find(s => s.id === ui.mobJob.siteId);
       if (!site) return;
       
       const inpChemSelect = $('#mobChemSelect');
@@ -3119,12 +3130,12 @@ function bind(){
       const dateStr = new Date().toLocaleDateString('tr-TR', { day: '2-digit', month: 'short', year: 'numeric' });
       const newChemUse = {
         id: `cu${Date.now()}`,
-        workOrderId: mobJob.id,
+        workOrderId: ui.mobJob.id,
         chemicalId: chemicalId,
         date: dateStr,
         quantity: quantity,
         area: area,
-        tech: mobJob.tech,
+        tech: ui.mobJob.tech,
         notes: notes || 'Saha uygulaması'
       };
       
@@ -3237,7 +3248,7 @@ function renderClientAnalytics() {
   const ctx = canvas.getContext('2d');
   if (!ctx) return;
   
-  const site = state.sites.find(s => s.id === activeSiteId);
+  const site = state.sites.find(s => s.id === ui.activeSiteId);
   if (!site) return;
   
   const activeFilterBtn = $('#analyticsFilterChips .filter-btn.active');
@@ -3457,9 +3468,9 @@ function deductStock(chemicalId, amountStr) {
 function renderMobChemicalsList(site) {
   const container = $('#mobChemicalList');
   if (!container) return;
-  if (!mobJob) return;
+  if (!ui.mobJob) return;
   
-  const visitChems = (site.chemicalsUsed || []).filter(cu => cu.workOrderId === mobJob.id);
+  const visitChems = (site.chemicalsUsed || []).filter(cu => cu.workOrderId === ui.mobJob.id);
   
   container.innerHTML = visitChems.map((cu, index) => {
     const chem = chemicalDatabase.find(c => c.id === cu.chemicalId);
@@ -3470,7 +3481,7 @@ function renderMobChemicalsList(site) {
           <b>${chemName}</b><br>
           <small class="text-muted">Miktar: ${cu.quantity} · Alan: ${cu.area}</small>
         </div>
-        ${mobJob.completed ? '' : `<button type="button" class="text-btn delete-mob-chem-btn" data-chem-index="${index}" style="color:var(--red); font-size:16px; font-weight:700; border:none; background:none; cursor:pointer;">×</button>`}
+        ${ui.mobJob.completed ? '' : `<button type="button" class="text-btn delete-mob-chem-btn" data-chem-index="${index}" style="color:var(--red); font-size:16px; font-weight:700; border:none; background:none; cursor:pointer;">×</button>`}
       </div>
     `;
   }).join('') || '<div class="text-muted" style="text-align:center; padding:10px; font-size:10px; background:var(--soft); border-radius:6px;">Ziyarette henüz kullanılan kimyasal girilmedi.</div>';

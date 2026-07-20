@@ -15,7 +15,7 @@ Claim a task by putting your session name in Owner, and claim its files in
 | 0a-1 | Extract data modules (`catalog.js`, `seed.js`) | **done** | — | `src/data/**` | Verified: 12 chemicals, 8 visit types, 10 equipment types, 6 sites intact |
 | 0a-2 | Extract core (`dom`, `state`, `auth`) | **done** | — | `src/core/**` | `router` deferred to 0a-3 — `setView` calls every renderer |
 | 0a-3 | Extract view renderers + router | todo | — | `src/views/**`, `src/core/router.js` | **Exclusive**. Needs shared UI cursors (below) |
-| 0a-3a | Move `activeSiteId` / `mobJob` etc. to a `ui` holder | todo | — | `src/core/session.js` | **Blocks 0a-3.** 7 module-level mutables that `applyRoleAccess` writes; imported `let` bindings are read-only, so they need an object holder |
+| 0a-3a | Move `activeSiteId` / `mobJob` etc. to a `ui` holder | **done** | — | `src/core/session.js` | 7 mutables, 95 refs rewritten. 0a-3 is unblocked |
 | 0a-4 | Extract UI (`modal`, `calendar`, `signature`) | todo | — | `src/ui/**` | **Exclusive**, after 0a-2 |
 | 0a-5 | Decompose `bind()` into per-view handlers | todo | — | `src/views/**`, `src/app.js` | **Exclusive**, after 0a-3. 1,274 lines — highest-risk step |
 | 0a-6 | Gitignore `state.js` ✅; vendor `html5-qrcode` | partial | — | `.gitignore`, `vendor/` | Gitignore done. CDN vendoring still open — needs approval to download the library |
@@ -97,4 +97,18 @@ await fetch('./src/core/dom.js',{cache:'reload'})  // forces past a pinned entry
 **`node --check` is not enough.** It validates syntax per file but will not
 catch a missing `export` — that only fails at import time. Always verify a
 refactor by loading the page and probing with the dynamic import above.
+
+**Browser-console `import()` runs in an isolated module map.** Dynamically
+importing a module from the devtools/automation context gives you a *different
+instance* than the page's `<script type="module">` graph — mutations made by
+the app are invisible in it. Do not use it to assert on shared state like
+`ui`; it will read stale defaults and look like a bug. Assert on observable
+DOM instead (e.g. switch site, count the rendered station rows).
+
+**Reset demo state properly** — it lives in three places:
+```bash
+rm -f data/state.json state.js     # server-side
+```
+plus `localStorage.clear()` in the page. Clearing only one leaves the app
+restoring half-finished work orders, which makes flow tests lie.
 
