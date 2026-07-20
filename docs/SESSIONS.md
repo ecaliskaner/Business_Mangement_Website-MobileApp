@@ -40,6 +40,12 @@ Workable, needs discipline. Rules below are mandatory.
 starting. Never edit a file another session owns — hand off through the
 registry instead.
 
+**1a. `src/app.js` is still shared until 0a-5.** The module split moved every
+view out, but the global event delegator `bind()` remains in `src/app.js` and
+almost every feature needs a handler there. Until it is decomposed, treat
+`src/app.js` like `index.html`: coordinate before editing, keep changes small
+and localised to your own handler block.
+
 **2. `index.html` is the main contention point.** Every view has a `<section>`
 in it. Protocol: a session may edit **only its own `<section id="...">`**.
 Nobody touches the shell, nav, `<head>`, or script tags without announcing it —

@@ -14,10 +14,10 @@ Claim a task by putting your session name in Owner, and claim its files in
 |---|---|---|---|---|---|
 | 0a-1 | Extract data modules (`catalog.js`, `seed.js`) | **done** | — | `src/data/**` | Verified: 12 chemicals, 8 visit types, 10 equipment types, 6 sites intact |
 | 0a-2 | Extract core (`dom`, `state`, `auth`) | **done** | — | `src/core/**` | `router` deferred to 0a-3 — `setView` calls every renderer |
-| 0a-3 | Extract view renderers + router | todo | — | `src/views/**`, `src/core/router.js` | **Exclusive**. Needs shared UI cursors (below) |
+| 0a-3 | Extract view renderers + router | **done** | — | `src/views/**`, `src/core/router.js` | 45 functions into 15 modules; imports derived from a dependency graph |
 | 0a-3a | Move `activeSiteId` / `mobJob` etc. to a `ui` holder | **done** | — | `src/core/session.js` | 7 mutables, 95 refs rewritten. 0a-3 is unblocked |
-| 0a-4 | Extract UI (`modal`, `calendar`, `signature`) | todo | — | `src/ui/**` | **Exclusive**, after 0a-2 |
-| 0a-5 | Decompose `bind()` into per-view handlers | todo | — | `src/views/**`, `src/app.js` | **Exclusive**, after 0a-3. 1,274 lines — highest-risk step |
+| 0a-4 | Extract UI (`modal`, `calendar`, `signature`) | **done** | — | `src/ui/**` | Done as part of 0a-3 |
+| 0a-5 | Decompose `bind()` into per-view handlers | todo | — | `src/views/**`, `src/app.js` | **Exclusive**. `src/app.js` is still ~1,300 lines of one delegator — the last shared-contention file |
 | 0a-6 | Gitignore `state.js` ✅; vendor `html5-qrcode` | partial | — | `.gitignore`, `vendor/` | Gitignore done. CDN vendoring still open — needs approval to download the library |
 | 0a-7 | Fix cache-first service worker | **done** | — | `service-worker.js`, `server.js` | Was serving stale modules indefinitely; now network-first. See note below |
 | 0b-1 | Seeded 12-month history generator | todo | — | `src/data/history.js` | Greenfield — parallel-safe |
@@ -104,6 +104,17 @@ instance* than the page's `<script type="module">` graph — mutations made by
 the app are invisible in it. Do not use it to assert on shared state like
 `ui`; it will read stale defaults and look like a bug. Assert on observable
 DOM instead (e.g. switch site, count the rendered station rows).
+
+**Check imports statically after any refactor.** The browser test only covers
+paths you actually click; `bind()` has many branches it will not reach. Run:
+
+```bash
+python scripts/checkimports.py
+```
+
+It flags any module referencing an exported symbol it never imports. Two known
+false positives are expected (a comment in `core/session.js`, object keys named
+`state:` in `data/seed.js`) — anything beyond those is real.
 
 **Reset demo state properly** — it lives in three places:
 ```bash

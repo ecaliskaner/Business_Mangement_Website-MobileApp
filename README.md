@@ -26,14 +26,22 @@ PORT=4174 npm start
 
 ```
 src/
-  app.js            application shell — views + event binding
+  app.js            event delegator + bootstrap
   core/
     dom.js          $, $$, toast
     state.js        load / save / derived stats
+    session.js      shared UI cursors (active site, mobile job, ...)
     auth.js         demo user directory
+    roles.js        role-based access gating
+    router.js       view routing + top-level render
   data/
     seed.js         sites, stations, work orders, technicians
     catalog.js      pest taxonomy, visit types, equipment, chemicals
+  views/            dashboard, sites, work, team, insights, reports,
+                    inventory, finance, companyDetail, mobile
+  ui/               modal, calendar, signature
+scripts/
+  checkimports.py   static check for missing cross-module imports
 docs/
   PLAN.md           phased build plan
   TASKS.md          task board
