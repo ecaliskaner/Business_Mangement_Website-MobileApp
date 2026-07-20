@@ -4,15 +4,22 @@ import { $ } from '../core/dom.js';
 import { state } from '../core/state.js';
 import { ui } from '../core/session.js';
 import { $$, toast } from '../core/dom.js';
+import { monthlyPestTotals, siteRanking, recommendationStats, chemicalStats } from '../data/history.js';
 
 export function renderInsights(){
-  const d={all:[34,29,31,24,27,19,22,16],rodent:[13,11,15,9,10,8,7,6],flying:[12,10,9,8,11,7,9,5],crawler:[9,8,7,7,6,4,6,5]}[$('#trendFilter').value];
-  const max=Math.max(...d);
-  $('#trendChart').innerHTML=d.map((n,i)=>`<span class="chart-bar" data-value="${n}" data-label="H${i+1}" style="height:${n/max*210}px"></span>`).join('');
-  $('#ranking').innerHTML=state.sites.slice(0,5).map((s,i)=>`
+  const filter = $('#trendFilter').value;
+  const series = monthlyPestTotals();
+  const d = series[filter] || series.all;
+  const max = Math.max(1, ...d);
+  $('#trendChart').innerHTML = d.map((n,i)=>`<span class="chart-bar" data-value="${n}" data-label="${series.labels[i]}" style="height:${n/max*210}px"></span>`).join('');
+
+  const caption = $('#trendCaption');
+  if (caption) caption.textContent = `Son 12 ay · ${d.reduce((s,n)=>s+n,0)} toplam bulgu`;
+
+  $('#ranking').innerHTML = siteRanking().slice(0,5).map((s,i)=>`
     <div class="rank-row" data-site-id="${s.id}" style="cursor:pointer;">
       <span>0${i+1}</span>
-      <div><b>${s.name}</b><small>${s.company} · ${s.issues} açık bulgu</small></div>
+      <div><b>${s.name}</b><small>${s.company} · son 3 ayda ${s.recentPests} bulgu · ${s.openRecommendations} açık öneri</small></div>
       <strong class="rank-score">${s.score}</strong>
     </div>
   `).join('');
@@ -56,20 +63,12 @@ export function renderClientAnalytics() {
   const activeFilterBtn = $('#analyticsFilterChips .filter-btn.active');
   const filter = activeFilterBtn ? activeFilterBtn.dataset.analyticsFilter : 'all';
   
-  const months = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran'];
-  let values = [];
-  
-  if (site.id === 's1') {
-    if (filter === 'all') values = [18, 22, 14, 19, 12, site.issues];
-    else if (filter === 'rodent') values = [8, 12, 6, 8, 4, site.stations.filter(s => s.type === 'rodent' && s.status === 'activity').length];
-    else if (filter === 'crawling') values = [4, 6, 5, 4, 3, site.stations.filter(s => s.type === 'crawler' && s.status === 'activity').length];
-    else if (filter === 'flying') values = [6, 4, 3, 7, 5, site.stations.filter(s => (s.type === 'flying' || s.type === 'insect_light_trap') && s.status === 'activity').length];
-    else values = [0, 0, 0, 0, 0, 0];
-  } else {
-    const scale = Math.max(2, Math.round((100 - site.score) / 3));
-    values = [scale + 4, scale + 2, scale + 5, scale + 1, scale, site.issues];
-  }
-  
+  const series = monthlyPestTotals(site.id);
+  const key = filter === 'crawling' ? 'crawler' : filter;
+  const full = series[key] || series.all;
+  const months = series.labels.slice(-6);
+  const values = full.slice(-6);
+
   const width = canvas.width;
   const height = canvas.height;
   ctx.clearRect(0, 0, width, height);
@@ -136,32 +135,26 @@ export function renderClientAnalytics() {
   
   const recStats = $('#recStatsContainer');
   if (recStats) {
-    const recs = site.recommendations || [];
-    const openRecs = recs.filter(r => r.status === 'open').length;
-    const closedRecs = recs.filter(r => r.status === 'resolved').length;
-    const hygiene = recs.filter(r => r.category === 'Hijyen').length;
-    const isolation = recs.filter(r => r.category === 'Yalıtım' || r.category === 'BRCGS' || r.category === 'AIB').length;
-    
+    const live = site.recommendations || [];
+    const r = recommendationStats(site.id);
+    const open = r.open + live.filter(x => x.status === 'open').length;
+    const resolved = r.resolved + live.filter(x => x.status === 'resolved').length;
     recStats.innerHTML = `
-      <div class="metric-card" style="box-shadow:none; border:1px solid var(--line); background:var(--soft);"><div><span>Açık Öneri</span><strong>${openRecs}</strong></div></div>
-      <div class="metric-card" style="box-shadow:none; border:1px solid var(--line); background:var(--soft);"><div><span>Giderilen Öneri</span><strong>${closedRecs}</strong></div></div>
-      <div class="metric-card" style="box-shadow:none; border:1px solid var(--line); background:var(--soft);"><div><span>Hijyen Odaklı</span><strong>${hygiene}</strong></div></div>
-      <div class="metric-card" style="box-shadow:none; border:1px solid var(--line); background:var(--soft);"><div><span>Yalıtım & Fiziksel</span><strong>${isolation}</strong></div></div>
+      <div class="metric-card" style="box-shadow:none; border:1px solid var(--line); background:var(--soft);"><div><span>Açık Öneri</span><strong>${open}</strong></div></div>
+      <div class="metric-card" style="box-shadow:none; border:1px solid var(--line); background:var(--soft);"><div><span>Giderilen Öneri</span><strong>${resolved}</strong></div></div>
+      <div class="metric-card" style="box-shadow:none; border:1px solid var(--line); background:var(--soft);"><div><span>Hijyen Odaklı</span><strong>${r.hygiene}</strong></div></div>
+      <div class="metric-card" style="box-shadow:none; border:1px solid var(--line); background:var(--soft);"><div><span>Yalıtım & Fiziksel</span><strong>${r.isolation}</strong></div></div>
     `;
   }
-  
+
   const chemStats = $('#chemStatsContainer');
   if (chemStats) {
-    const chemCount = site.chemicalsUsed ? site.chemicalsUsed.length : 0;
-    const totalQty = site.chemicalsUsed ? site.chemicalsUsed.reduce((sum, cu) => {
-      const q = parseInt(cu.quantity) || 0;
-      return sum + q;
-    }, 0) : 0;
+    const c = chemicalStats(site.id);
     chemStats.innerHTML = `
-      <div class="metric-card" style="box-shadow:none; border:1px solid var(--line); background:var(--soft);"><div><span>Uygulama Sayısı</span><strong>${chemCount}</strong></div></div>
-      <div class="metric-card" style="box-shadow:none; border:1px solid var(--line); background:var(--soft);"><div><span>Toplam Sarfiyat</span><strong>${totalQty} ml/gr</strong></div></div>
-      <div class="metric-card" style="box-shadow:none; border:1px solid var(--line); background:var(--soft);"><div><span>Aktif Ürün Türü</span><strong>${site.chemicalsUsed ? [...new Set(site.chemicalsUsed.map(c => c.chemicalId))].length : 0}</strong></div></div>
-      <div class="metric-card" style="box-shadow:none; border:1px solid var(--line); background:var(--soft);"><div><span>Son Uygulama</span><strong>${site.chemicalsUsed && site.chemicalsUsed[0] ? site.chemicalsUsed[0].date : '—'}</strong></div></div>
+      <div class="metric-card" style="box-shadow:none; border:1px solid var(--line); background:var(--soft);"><div><span>Uygulama Sayısı</span><strong>${c.applications}</strong></div></div>
+      <div class="metric-card" style="box-shadow:none; border:1px solid var(--line); background:var(--soft);"><div><span>Toplam Sarfiyat</span><strong>${c.totalQuantity.toLocaleString('tr-TR')} ml/gr</strong></div></div>
+      <div class="metric-card" style="box-shadow:none; border:1px solid var(--line); background:var(--soft);"><div><span>Aktif Ürün Türü</span><strong>${c.distinctProducts}</strong></div></div>
+      <div class="metric-card" style="box-shadow:none; border:1px solid var(--line); background:var(--soft);"><div><span>Son Uygulama</span><strong>${c.lastDate}</strong></div></div>
     `;
   }
 }

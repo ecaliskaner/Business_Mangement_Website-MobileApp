@@ -80,18 +80,19 @@ Update this table when you claim or release files.
 | Area | Files | Owner | Status |
 |---|---|---|---|
 | Core / bootstrap | `src/core/**`, `src/app.js` | — | free |
-| Catalog data | `src/data/catalog.js` | — | free |
-| Seed + history | `src/data/seed.js`, `src/data/history.js` | — | free |
-| Charts / export | `src/ui/charts.js`, `src/ui/export.js` | — | free |
-| Modal / calendar / signature | `src/ui/modal.js`, `calendar.js`, `signature.js` | — | free |
+| Catalog data | `src/data/catalog.js` | Session C | claimed (phase-1a) |
+| Seed + history | `src/data/seed.js`, `src/data/history.js` | Session A | released — 0b-1 landed on `phase-0b` |
+| Charts / export | `src/ui/charts.js`, `src/ui/export.js` | — | free (0c landed; API stable — see `demo/charts.html`) |
+| Modal / calendar | `src/ui/modal.js`, `calendar.js` | — | free |
+| Signature | `src/ui/signature.js` | Session C | claimed (phase-1a) |
 | Dashboard | `src/views/dashboard.js` | — | free |
 | Sites | `src/views/sites.js` | — | free |
 | Work orders | `src/views/work.js` | — | free |
 | Team | `src/views/team.js` | — | free |
-| Insights | `src/views/insights.js` | — | free |
+| Insights | `src/views/insights.js` | Session A | released — 0b-2 landed on `phase-0b` |
 | Reports | `src/views/reports.js` | — | free |
-| Company detail | `src/views/companyDetail.js` | — | free |
-| Mobile | `src/views/mobile.js` | — | free |
+| Company detail | `src/views/companyDetail.js` | Session C | claimed (phase-1a) |
+| Mobile | `src/views/mobile.js` | Session C | claimed (phase-1a) |
 | Inventory | `src/views/inventory.js` | — | free |
 | Finance | `src/views/finance.js` | — | free |
 
