@@ -126,8 +126,8 @@ whole-file conflict.
 
 ## Ready-to-use session prompts
 
-Phase 0a is done, so these can run at the same time. Wave 1 below is chosen so
-the three sessions touch disjoint files.
+**Wave 1 (A/B/C below) landed on `main` in merge commits `72d0334`/`a65cbb9`.**
+Kept for reference; skip to **Wave 2** for the next runnable prompts.
 
 ### Session A — history engine (task 0b)
 
@@ -193,7 +193,99 @@ the three sessions touch disjoint files.
 > Run `python scripts/checkimports.py` and verify in the browser before
 > committing. Work on branch `phase-1a`.
 
-### Wave 2 (after A lands)
+## Wave 2 — ready now (history engine + charts are on `main`)
 
-Session A's history engine unblocks **1-2** (equipment replacement preserving
-history), **1-6** (closed-loop recommendations), and all of Phase 2.
+The three sessions below touch disjoint files. All branch from `main` at
+`00201cc` or later. One coupling to know about: Session F **consumes**
+`recommendationStats()` from `src/data/history.js` while Session D may
+**extend** the recommendation objects for 1-6 — D must keep changes additive
+(new fields only, never rename or remove).
+
+### Session D — closed-loop lifecycle (tasks 1-2, 1-6)
+
+> Read `docs/PLAN.md`, `docs/TASKS.md`, `docs/SESSIONS.md`, and the
+> requirements in `Repellent Online sistem yol haritası.docx` (extract its text
+> from `word/document.xml`; the encoding is mangled but readable).
+>
+> You own tasks **1-2 and 1-6**. Claim them in `docs/TASKS.md` and claim
+> `src/views/companyDetail.js` and `src/data/history.js` in the registry.
+>
+> Build: **equipment replacement preserving history** (new barcode, same point
+> number — the station keeps its reading history across the swap; use
+> `visitsForSite()` from `src/data/history.js`), and the **closed-loop
+> recommendation workflow** (tech raises finding with photo → customer responds
+> with photo → tech approves closure; three roles, visible status at each
+> step). Recommendations already exist in `history.js` with
+> raised/closed dates — extend them additively, never rename fields.
+>
+> Constraints: this is a **pitch demo** — no backend, simulation is fine, but
+> every feature must visibly work. If you add a handler, add it to the chain in
+> `src/app.js` in **one line** at the position matching where it should run.
+> `styles.css` is append-only inside your own banner comment. Run
+> `python scripts/checkimports.py` and verify in the browser before
+> committing. Work on branch `phase-1b` in a **git worktree**
+> (`git worktree add ../Bug-phase1b -b phase-1b`), and use the
+> `pestops-4174` launch config so ports don't clash.
+
+### Session E — report suite (tasks 1-8, 2-4, 5-1)
+
+> Read `docs/PLAN.md`, `docs/TASKS.md`, `docs/SESSIONS.md`, and
+> `docs/COMPETITOR.md` — Insectram ships ~10 report types; this session is how
+> we match them.
+>
+> You own tasks **1-8, 2-4 and 5-1**. Claim them in `docs/TASKS.md` and claim
+> `src/views/reports.js` and `src/ui/export.js` in the registry.
+>
+> Build **five distinct printable report bodies** (visit report, trend report,
+> comparison report, non-conformity report, audit package) on top of the
+> existing export API: `printElement()` for print-to-PDF and `downloadCSV()`
+> from `src/ui/export.js`, charts from `src/ui/charts.js` (see
+> `demo/charts.html` for the API — pure functions, options in, SVG string
+> out). Real data comes from `src/data/history.js` (`getVisits()`,
+> `monthlyPestTotals()`, `recommendationStats()`, `chemicalStats()`). Add the
+> **3rd Eye audit section** and **compliance badges**
+> (BRCGS/SALSA/ISO22000/FSSC22000/RedTractor/AIB) on the reports view.
+>
+> Constraints: this is a **pitch demo** — no backend, simulation is fine, but
+> every feature must visibly work. Handler additions go into the chain in
+> `src/app.js` in one line. `styles.css` is append-only inside your own banner
+> comment; print styles live under the existing `ct-printing` block pattern.
+> Run `python scripts/checkimports.py` and verify in the browser before
+> committing. Work on branch `phase-1c` in a **git worktree**
+> (`git worktree add ../Bug-phase1c -b phase-1c`), and use the
+> `pestops-4175` launch config so ports don't clash.
+
+### Session F — analytics upgrade (tasks 2-1, 2-2, 2-3)
+
+> Read `docs/PLAN.md`, `docs/TASKS.md` and `docs/SESSIONS.md` first.
+>
+> You own tasks **2-1, 2-2 and 2-3**. Claim them in `docs/TASKS.md` and claim
+> `src/views/insights.js` and `src/ui/charts.js` in the registry.
+>
+> First, **replace the hand-made span-bar trend chart** in
+> `src/views/insights.js` with the SVG chart library (`lineChart`, `barChart`,
+> `stackedBarChart`, `donutChart` from `src/ui/charts.js` — see
+> `demo/charts.html`). Then build: **multi-location / city / region
+> comparison** (compare sites side by side), **multi-select chart filters with
+> per-chart SVG/PNG download** (`downloadChartSVG` / `downloadChartPNG` from
+> `src/ui/export.js` — consume only, Session E owns edits to that file), and
+> **recommendation statistics** (raised / actioned / approved; hygiene vs
+> isolation split) from `recommendationStats()` in `src/data/history.js` —
+> consume only, Session D owns edits to that file.
+>
+> You may edit **only the `<section id="insights">` block** of `index.html`.
+>
+> Constraints: this is a **pitch demo** — no backend, simulation is fine, but
+> every feature must visibly work. Handler additions go into the chain in
+> `src/app.js` in one line. `styles.css` is append-only inside your own banner
+> comment. Run `python scripts/checkimports.py` and verify in the browser
+> before committing. Work on branch `phase-2a` in a **git worktree**
+> (`git worktree add ../Bug-phase2a -b phase-2a`), and use the
+> `pestops-4176` launch config so ports don't clash.
+
+### Wave 3 (after Wave 2 lands)
+
+Phase 3 field realism (3-1…3-6, team + mobile + work), Phase 4 business layer
+(4-1…4-4, finance), Phase 5 hardening (5-2 demo reset, 5-3 guided tour, 5-4
+fast role switching). 3-x and 4-x are a good parallel pair; 5-3 guided tour
+should run **alone** — it touches the shell.

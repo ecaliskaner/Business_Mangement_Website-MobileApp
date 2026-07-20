@@ -112,9 +112,26 @@ paths you actually click; `bind()` has many branches it will not reach. Run:
 python scripts/checkimports.py
 ```
 
-It flags any module referencing an exported symbol it never imports. Two known
+It flags any module referencing an exported symbol it never imports. Four known
 false positives are expected (a comment in `core/session.js`, object keys named
-`state:` in `data/seed.js`) — anything beyond those is real.
+`state:` in `data/seed.js`, comment mentions of `save` in `data/catalog.js` and
+`state` in `ui/signature.js`) — anything beyond those is real.
+
+**Run `git status` after you commit — it must come back clean.** Session A
+wired `insights.js` to `#trendCaption` but the matching one-line `index.html`
+change never made it into the commit; the feature silently half-worked until
+the merge (fixed in `00201cc`). In a shared folder your uncommitted file hides
+among other sessions' dirt. Worktrees (now mandated in the Wave 2 prompts)
+make a leftover file impossible to miss.
+
+**Browser tabs from before the cache fix are still poisoned.** The `no-cache`
+header only helps requests made *after* it shipped; a tab (or automation
+profile) that loaded the app in the `immutable` era holds year-valid HTTP cache
+entries and will resurrect the old monolithic module graph — symptom: only ~6
+JS files in the network log instead of 25. Recover with an explicit refresh of
+every app URL via `fetch(url, {cache:'reload'})` plus SW unregister + cache
+delete, then reload. Checking `performance.getEntriesByType('resource')` length
+is the fastest way to confirm which graph actually loaded.
 
 **Charts and export are available (0c).** Tasks 0b-2, 1-8, 2-2 consume these.
 
