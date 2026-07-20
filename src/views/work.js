@@ -3,6 +3,13 @@
 import { $ } from '../core/dom.js';
 import { state } from '../core/state.js';
 import { chemicalDatabase, visitTypes } from '../data/catalog.js';
+import { $$, toast } from '../core/dom.js';
+import { render, setView } from '../core/router.js';
+import { recalculateSiteStats, save } from '../core/state.js';
+import { renderCalendarGrid } from '../ui/calendar.js';
+import { modal } from '../ui/modal.js';
+import { renderDashboard } from '../views/dashboard.js';
+import { deductStock, renderInventory } from '../views/inventory.js';
 
 export function renderWork(filter='all'){
   let sourceList = state.work;
@@ -119,4 +126,256 @@ export function renderTask(){
       <button class="secondary-btn" data-site-id="${w.siteId}">⌖ Tesis Kat Planını Aç</button>
     </div>
   `;
+}
+
+
+export function workListClicks(e) {
+    const wf=e.target.closest('[data-work-filter]');
+    if(wf){
+      $$('.work-stat').forEach(x=>x.classList.toggle('active',x===wf));
+      renderWork(wf.dataset.workFilter);
+    }
+    
+    const work=e.target.closest('[data-work]');
+    if(work){
+      state.selectedWork=work.dataset.work;
+      save();
+      renderTask();
+    }
+  return false;
+}
+
+export function workCardClicks(e) {
+    const workClick = e.target.closest('[data-work-id]');
+    if (workClick) {
+      state.selectedWork = workClick.dataset.workId;
+      save();
+      setView('work');
+      renderWork();
+      return true;
+    }
+  return false;
+}
+
+export function completeWorkClicks(e) {
+    if(e.target.closest('#completeWork')){
+      const w = state.work.find(x => x.id === state.selectedWork);
+      if (w) {
+        state.completed++;
+        w.completed = true;
+        
+        const site = state.sites.find(s => s.id === w.siteId) || state.sites[0];
+        site.last = `Bugün · ${w.tech}`;
+        
+        // Calculate costs on PC
+        const techRate = state.techRates[w.tech] || 150;
+        const laborCost = Math.round((60 / 60) * techRate); // assume 60 mins default
+        
+        let chemicalCost = 0;
+        const siteChems = site.chemicalsUsed || [];
+        siteChems.forEach(cu => {
+          if (cu.workOrderId === w.id) {
+            const chem = chemicalDatabase.find(c => c.id === cu.chemicalId);
+            if (chem) {
+              const qty = parseFloat(cu.quantity.replace(/[^\d\.]/g, '')) || 0;
+              chemicalCost += Math.round(qty * chem.unitCost);
+            }
+          }
+        });
+        if (chemicalCost === 0) chemicalCost = 150; // default baseline
+        
+        const billingAmount = site.contract ? site.contract.monthlyPrice : 3500;
+        const profit = billingAmount - (laborCost + chemicalCost);
+        const margin = Math.round((profit / billingAmount) * 100);
+        
+        // Generate invoice draft
+        const newInvoice = {
+          id: `INV-${Math.floor(1000 + Math.random() * 9000)}`,
+          siteId: site.id,
+          company: site.company,
+          name: site.name,
+          date: new Date().toLocaleDateString('tr-TR', { day: '2-digit', month: 'short', year: 'numeric' }),
+          amount: billingAmount,
+          laborCost: laborCost,
+          chemicalCost: chemicalCost,
+          margin: margin,
+          duration: '60 dk',
+          status: 'draft',
+          description: `${w.visitType ? (visitTypes.find(v=>v.code===w.visitType)||{}).name : 'Rutin'} Servis Faturası`
+        };
+        
+        if (!state.invoices) state.invoices = [];
+        state.invoices.unshift(newInvoice);
+        
+        recalculateSiteStats(site);
+        save();
+        render();
+        toast('İş emri tamamlandı; fatura taslağı oluşturuldu.');
+      }
+    }
+    
+    // Back button in company profile
+  return false;
+}
+
+export function calendarToggleClicks(e) {
+    if (e.target.id === 'btnWorkShowList') {
+      $('#workListWrapper').classList.remove('hidden');
+      $('#workCalendarContainer').classList.add('hidden');
+      $('#btnWorkShowList').classList.add('active');
+      $('#btnWorkShowCalendar').classList.remove('active');
+      return true;
+    }
+    if (e.target.id === 'btnWorkShowCalendar') {
+      $('#workListWrapper').classList.add('hidden');
+      $('#workCalendarContainer').classList.remove('hidden');
+      $('#btnWorkShowList').classList.remove('active');
+      $('#btnWorkShowCalendar').classList.add('active');
+      renderCalendarGrid();
+      return true;
+    }
+
+    // Heatmap mode toggler
+  return false;
+}
+
+export function taskChemDeleteClicks(e) {
+    const deleteTaskChemBtn = e.target.closest('.delete-task-chem-btn');
+    if (deleteTaskChemBtn) {
+      const w = state.work.find(x => x.id === state.selectedWork) || state.work[0];
+      if (!w) return true;
+      
+      const site = state.sites.find(s => s.id === w.siteId);
+      if (!site) return true;
+      
+      const idx = parseInt(deleteTaskChemBtn.dataset.chemIndex);
+      const visitChems = site.chemicalsUsed.filter(cu => cu.workOrderId === w.id);
+      const targetChemUse = visitChems[idx];
+      
+      if (targetChemUse) {
+        // Restore stock
+        const numVal = parseFloat(targetChemUse.quantity.replace(/[^\d\.]/g, '')) || 0;
+        const invItem = state.inventory.find(i => i.chemicalId === targetChemUse.chemicalId);
+        if (invItem && numVal > 0) {
+          invItem.qty = Math.round((invItem.qty + numVal) * 10) / 10;
+        }
+        
+        // Remove from list
+        const mainIdx = site.chemicalsUsed.indexOf(targetChemUse);
+        if (mainIdx > -1) {
+          site.chemicalsUsed.splice(mainIdx, 1);
+        }
+        
+        save();
+        renderTask();
+        renderInventory();
+        toast('Kimyasal kullanımı silindi ve stok iade edildi.');
+      }
+      return true;
+    }
+
+    // Invoice status filters
+  return false;
+}
+
+export function createWorkSubmit(e) {
+    if(e.target.id==='createWork'){
+      e.preventDefault();
+      const f = new FormData(e.target);
+      const title = f.get('title') || 'Planlı saha kontrolü';
+      const siteVal = f.get('site');
+      const priority = f.get('priority') || 'Normal';
+      const techVal = f.get('tech') || 'Ayşe Demir';
+      const dateVal = f.get('dueDate');
+      
+      // Find site
+      const siteObj = state.sites.find(s => s.name === siteVal) || state.sites[0];
+      
+      let formattedDue = 'Bugün, 18:00';
+      if (dateVal) {
+        const dt = new Date(dateVal);
+        const day = dt.getDate();
+        const monthStr = dt.toLocaleDateString('tr-TR', { month: 'short' });
+        const timeStr = dt.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+        formattedDue = `${day} ${monthStr}, ${timeStr}`;
+      }
+      
+      const visitType = f.get('visitType') || 'RZ';
+      const newWo = {
+        id: `WO-${Math.floor(2000 + Math.random() * 1000)}`,
+        siteId: siteObj.id,
+        title: title,
+        site: `${siteObj.company} · ${siteObj.name}`,
+        priority: priority === 'Kritik' ? 'critical' : (priority === 'Yüksek' ? 'high' : 'normal'),
+        type: 'Planlı servis',
+        visitType: visitType,
+        due: formattedDue,
+        tech: techVal,
+        description: 'Periyodik istasyon kontrolü ve genel pest control denetimi.'
+      };
+      
+      state.work.push(newWo);
+      save();
+      $('#modal').classList.add('hidden');
+      renderWork();
+      renderDashboard();
+      toast(`İş emri oluşturuldu ve ${techVal} teknisyenine atandı.`);
+    }
+    
+    // Tesis & Sözleşme Düzenleme Formu
+  return false;
+}
+
+export function taskChemicalSubmit(e) {
+    if (e.target.id === 'taskChemicalForm') {
+      e.preventDefault();
+      const w = state.work.find(x => x.id === state.selectedWork) || state.work[0];
+      if (!w) return true;
+      
+      const site = state.sites.find(s => s.id === w.siteId);
+      if (!site) return true;
+      
+      const inpChemSelect = $('#taskChemSelect');
+      const inpChemQty = $('#taskChemQty');
+      const inpChemArea = $('#taskChemArea');
+      const inpChemNotes = $('#taskChemNotes');
+      if (!inpChemSelect || !inpChemQty || !inpChemArea || !inpChemNotes) return true;
+      
+      const chemicalId = inpChemSelect.value;
+      const quantity = inpChemQty.value.trim();
+      const area = inpChemArea.value.trim();
+      const notes = inpChemNotes.value.trim();
+      
+      if (!chemicalId || !quantity || !area) return true;
+      
+      const dateStr = new Date().toLocaleDateString('tr-TR', { day: '2-digit', month: 'short', year: 'numeric' });
+      const newChemUse = {
+        id: `cu${Date.now()}`,
+        workOrderId: w.id,
+        chemicalId: chemicalId,
+        date: dateStr,
+        quantity: quantity,
+        area: area,
+        tech: w.tech,
+        notes: notes || 'Ziyaret uygulaması'
+      };
+      
+      if (!site.chemicalsUsed) site.chemicalsUsed = [];
+      site.chemicalsUsed.unshift(newChemUse);
+      
+      // Auto-deduct stock
+      deductStock(chemicalId, quantity);
+      
+      save();
+      renderTask();
+      
+      inpChemSelect.value = '';
+      inpChemQty.value = '';
+      inpChemArea.value = '';
+      inpChemNotes.value = '';
+      toast('Kimyasal başarıyla eklendi.');
+    }
+
+    // Mobile Chemical Form submit
+  return false;
 }

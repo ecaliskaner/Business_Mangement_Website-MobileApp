@@ -3,6 +3,8 @@
 import { $ } from '../core/dom.js';
 import { state } from '../core/state.js';
 import { techData } from '../data/seed.js';
+import { $$ } from '../core/dom.js';
+import { save } from '../core/state.js';
 
 export function renderTeam(){
   const d=techData[state.selectedTech];
@@ -26,4 +28,18 @@ export function renderTeam(){
       <div><b>${n}</b><span>${x[1]} · ${x[2]}</span></div>
     </div>
   `).join('');
+}
+
+
+export function teamRosterClicks(e) {
+    const tech=e.target.closest('[data-tech]');
+    if(tech){
+      state.selectedTech=tech.dataset.tech;
+      save();
+      $$('.map-person').forEach(x=>x.classList.toggle('active',x===tech));
+      renderTeam();
+    }
+    
+    // Clicking site / company cell or dot links to company detail profile
+  return false;
 }

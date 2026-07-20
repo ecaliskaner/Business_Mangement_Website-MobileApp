@@ -1298,7 +1298,9 @@
       </div>
     </div>
 
-    <script src="https://unpkg.com/html5-qrcode"></script>
+    <!-- Vendored (html5-qrcode 2.3.8): a CDN fetch would kill the QR scanner
+         on venue wifi, and the demo cannot depend on the network. -->
+    <script src="./vendor/html5-qrcode.min.js"></script>
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {

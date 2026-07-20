@@ -17,8 +17,8 @@ Claim a task by putting your session name in Owner, and claim its files in
 | 0a-3 | Extract view renderers + router | **done** | — | `src/views/**`, `src/core/router.js` | 45 functions into 15 modules; imports derived from a dependency graph |
 | 0a-3a | Move `activeSiteId` / `mobJob` etc. to a `ui` holder | **done** | — | `src/core/session.js` | 7 mutables, 95 refs rewritten. 0a-3 is unblocked |
 | 0a-4 | Extract UI (`modal`, `calendar`, `signature`) | **done** | — | `src/ui/**` | Done as part of 0a-3 |
-| 0a-5 | Decompose `bind()` into per-view handlers | todo | — | `src/views/**`, `src/app.js` | **Exclusive**. `src/app.js` is still ~1,300 lines of one delegator — the last shared-contention file |
-| 0a-6 | Gitignore `state.js` ✅; vendor `html5-qrcode` | partial | — | `.gitignore`, `vendor/` | Gitignore done. CDN vendoring still open — needs approval to download the library |
+| 0a-5 | Decompose `bind()` into per-view handlers | **done** | — | `src/views/**`, `src/app.js` | 33 handlers into owning modules; app.js 1,327 → 277 lines. Parallel work now unblocked |
+| 0a-6 | Gitignore `state.js`; vendor `html5-qrcode` | **done** | — | `.gitignore`, `vendor/` | html5-qrcode 2.3.8 vendored (367 KB). Zero external requests remain |
 | 0a-7 | Fix cache-first service worker | **done** | — | `service-worker.js`, `server.js` | Was serving stale modules indefinitely; now network-first. See note below |
 | 0b-1 | Seeded 12-month history generator | todo | — | `src/data/history.js` | Greenfield — parallel-safe |
 | 0b-2 | Wire history into insights + company detail | todo | — | `src/views/insights.js` | After 0b-1 |

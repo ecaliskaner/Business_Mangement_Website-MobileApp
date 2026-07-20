@@ -7,6 +7,12 @@ import { ui } from '../core/session.js';
 import { chemicalDatabase, equipmentStatusCodes, equipmentTypes, pestDatabase, stateLabel } from '../data/catalog.js';
 import { setView } from '../core/router.js';
 import { renderClientAnalytics } from '../views/insights.js';
+import { toast } from '../core/dom.js';
+import { save } from '../core/state.js';
+import { modal, printQrCodeSticker } from '../ui/modal.js';
+import { deductStock } from '../views/inventory.js';
+import { showMobileInspect } from '../views/mobile.js';
+import { renderSites } from '../views/sites.js';
 
 export function showCompanyDetail(siteId) {
   ui.activeSiteId = siteId;
@@ -470,4 +476,380 @@ export function renderServiceScope(site) {
       </div>
     `;
   }
+}
+
+
+export function siteCardClicks(e) {
+    const siteClick = e.target.closest('[data-site-id]');
+    if (siteClick) {
+      showCompanyDetail(siteClick.dataset.siteId);
+      return true;
+    }
+    
+    // Clicking works on dashboard redirects to work orders view
+  return false;
+}
+
+export function backNavClicks(e) {
+    if (e.target.id === 'backToSitesFromCompBtn') {
+      setView('sites');
+    }
+
+    // Toggle calendar and list views
+  return false;
+}
+
+export function planToolbarClicks(e) {
+    const heatToggle = e.target.closest('#heatmapToggleBtn');
+    if (heatToggle) {
+      const site = state.sites.find(s => s.id === ui.activeSiteId);
+      if (site) {
+        renderStationMarkers(site.stations, $$('[data-station-filter].active')[0]?.dataset.stationFilter || 'all');
+      }
+    }
+
+    // Print QR code sticker label
+    if (e.target.id === 'printStationQrBtn') {
+      printQrCodeSticker(ui.activeStationCode);
+      return true;
+    }
+
+    // Toggle recommendation compliance status
+    const toggleRecBtn = e.target.closest('.toggle-rec-btn');
+    if (toggleRecBtn) {
+      const idx = parseInt(toggleRecBtn.dataset.recIndex);
+      const site = state.sites.find(s => s.id === ui.activeSiteId);
+      if (site && site.recommendations && site.recommendations[idx]) {
+        const r = site.recommendations[idx];
+        r.status = r.status === 'open' ? 'resolved' : 'open';
+        save();
+        renderCompanyRecommendations(site);
+        toast(`Öneri durumu güncellendi: ${r.status === 'resolved' ? 'Giderildi' : 'Açık Bulgu'}`);
+      }
+      return true;
+    }
+  return false;
+}
+
+export function planCanvasClicks(e) {
+    const marker = e.target.closest('[data-station-code]');
+    if (marker) {
+      const stationCode = marker.dataset.stationCode;
+      const isMobile = e.target.closest('#mobileBlueprintWrapper');
+      if (isMobile) {
+        showMobileInspect(stationCode);
+      } else {
+        showStationDetail(stationCode);
+      }
+    }
+    
+    // Station filters click in facility plan
+    const sf = e.target.closest('[data-station-filter]');
+    if (sf) {
+      $$('[data-station-filter]').forEach(x => x.classList.toggle('active', x === sf));
+      const site = state.sites.find(s => s.id === ui.activeSiteId);
+      if (site) {
+        // Clear active room rect highlights when clicking manual filters
+        $$('.blueprint-room').forEach(r => r.classList.remove('active'));
+        renderStationMarkers(site.stations, sf.dataset.stationFilter);
+      }
+    }
+
+    // Blueprint room SVG click filter
+    const roomClick = e.target.closest('.blueprint-room');
+    if (roomClick) {
+      const roomName = roomClick.dataset.room;
+      const alreadyActive = roomClick.classList.contains('active');
+      
+      // Clear active classes from other rooms and manual filters
+      $$('.blueprint-room').forEach(r => r.classList.remove('active'));
+      $$('[data-station-filter]').forEach(x => x.classList.toggle('active', x.dataset.stationFilter === 'all'));
+      
+      const site = state.sites.find(s => s.id === ui.activeSiteId);
+      if (!site) return true;
+      
+      if (alreadyActive) {
+        renderStationMarkers(site.stations, 'all');
+        toast("Tüm istasyonlar listeleniyor.");
+      } else {
+        roomClick.classList.add('active');
+        const filtered = site.stations.filter(s => getStationArea(s.x, s.y) === roomName);
+        renderStationMarkers(filtered, 'all');
+        toast(`"${roomName}" bölgesindeki istasyonlar filtrelendi (${filtered.length} adet).`);
+      }
+      return true;
+    }
+    
+    // ==========================================
+    // MOBILE APP CLICK EVENTS
+    // ==========================================
+  return false;
+}
+
+export function companyTabClicks(e) {
+    const compTab = e.target.closest('[data-comp-tab]');
+    if (compTab) {
+      switchCompanyTab(compTab.dataset.compTab);
+      return true;
+    }
+
+    // Download Client Analytics Chart
+  return false;
+}
+
+export function fileDownloadClicks(e) {
+    const downloadBtn = e.target.closest('.download-file-btn');
+    if (downloadBtn) {
+      const idx = parseInt(downloadBtn.dataset.fileIndex);
+      const site = state.sites.find(s => s.id === ui.activeSiteId);
+      if (site && site.files && site.files[idx]) {
+        toast(`${site.files[idx].name} indirmesi başlatıldı...`);
+      }
+      return true;
+    }
+  return false;
+}
+
+export function editSiteSubmit(e) {
+    if(e.target.id==='editSiteForm'){
+      e.preventDefault();
+      const siteId = e.target.dataset.siteId;
+      const s = state.sites.find(site => site.id === siteId);
+      if(!s) return true;
+      
+      const f = new FormData(e.target);
+      s.contact = {
+        name: f.get('contactName'),
+        phone: f.get('contactPhone'),
+        email: f.get('contactEmail')
+      };
+      s.address = f.get('address');
+      s.serviceFrequency = f.get('serviceFrequency');
+      
+      const annualPrice = parseFloat(f.get('annualPrice')) || 0;
+      const monthlyPrice = parseFloat(f.get('monthlyPrice')) || 0;
+      const extraVisitPrice = parseFloat(f.get('extraVisitPrice')) || 0;
+      const emergencyCallPrice = parseFloat(f.get('emergencyCallPrice')) || 0;
+      
+      s.contract = {
+        period: f.get('contractPeriod'),
+        taxOffice: f.get('taxOffice'),
+        taxNo: f.get('taxNo'),
+        annualPrice: annualPrice,
+        monthlyPrice: monthlyPrice,
+        extraVisitPrice: extraVisitPrice,
+        emergencyCallPrice: emergencyCallPrice
+      };
+      
+      s.serviceScope = {
+        outdoorRodent: { frequency: parseFloat(f.get('freqOutdoorRodent')) || 0, unit: 'ay' },
+        indoorRodent: { frequency: parseFloat(f.get('freqIndoorRodent')) || 0, unit: 'ay' },
+        crawlingPest: { frequency: parseFloat(f.get('freqCrawlingPest')) || 0, unit: 'ay' },
+        flyingPest: { frequency: parseFloat(f.get('freqFlyingPest')) || 0, unit: 'ay' },
+        storagePest: { frequency: parseFloat(f.get('freqStoragePest')) || 0, unit: 'ay' }
+      };
+      
+      save();
+      $('#modal').classList.add('hidden');
+      
+      showCompanyDetail(s.id);
+      renderSites();
+      toast('Tesis ve sözleşme detayları başarıyla güncellendi.');
+    }
+  return false;
+}
+
+export function adminInspectionSubmit(e) {
+    if (e.target.id === 'adminInspectionForm') {
+      e.preventDefault();
+      if (!ui.activeSiteId || !ui.activeStationCode) return true;
+      
+      const site = state.sites.find(s => s.id === ui.activeSiteId);
+      if (!site) return true;
+      const s = site.stations.find(st => st.code === ui.activeStationCode);
+      if (!s) return true;
+      
+      const f = new FormData(e.target);
+      s.checked = true;
+      s.baitStatus = f.get('baitStatus');
+      s.pestType = f.get('pestType');
+      s.pestCount = parseInt(f.get('pestCount')) || 0;
+      s.status = f.get('status');
+      s.notes = f.get('notes');
+      
+      const localPestLabels = { none: 'Yok', mouse: 'Fare', rat: 'Sıçan', cockroach: 'Hamamböceği', fly: 'Sinek', other: 'Diğer' };
+      Object.values(pestDatabase).forEach(category => {
+        category.forEach(p => {
+          localPestLabels[p.code] = p.name;
+        });
+      });
+      
+      if (s.pestType !== 'none' && s.pestCount > 0) {
+        const pestName = localPestLabels[s.pestType] || s.pestType;
+        s.findings = [{
+          pestCode: s.pestType,
+          pestName: pestName,
+          count: s.pestCount
+        }];
+      } else {
+        s.findings = [];
+      }
+      
+      s.controlledBy = "Seda Kaya (Yönetici)";
+      s.lastControl = "Bugün, " + new Date().toLocaleTimeString('tr-TR', {hour: '2-digit', minute:'2-digit'});
+      
+      if (s.pestType !== 'none') {
+        s.status = 'activity';
+      } else if (s.status === 'activity') {
+        s.status = 'clean';
+      }
+      
+      recalculateSiteStats(site);
+      save();
+      showCompanyDetail(ui.activeSiteId);
+      toast(`İstasyon ${s.code} denetimi başarıyla kaydedildi.`);
+    }
+
+    // Company profile file upload form submit
+  return false;
+}
+
+export function fileUploadSubmit(e) {
+    if (e.target.id === 'companyFileUploadForm') {
+      e.preventDefault();
+      if (!ui.activeSiteId) return true;
+      const site = state.sites.find(s => s.id === ui.activeSiteId);
+      if (!site) return true;
+      
+      const inpName = $('#inpUploadFileName');
+      const inpFile = $('#inpUploadFile');
+      const inpCat = $('#inpUploadFileCategory');
+      if (!inpName || !inpFile) return true;
+      
+      const fileName = inpName.value.trim();
+      if (!fileName) return true;
+      
+      const ext = inpFile.files[0] ? inpFile.files[0].name.split('.').pop() : 'pdf';
+      const rawSize = inpFile.files[0] ? inpFile.files[0].size : 1250000;
+      const sizeStr = rawSize > 1024*1024 ? `${(rawSize/(1024*1024)).toFixed(1)} MB` : `${Math.round(rawSize/1024)} KB`;
+      const dateStr = new Date().toLocaleDateString('tr-TR', { day: '2-digit', month: 'long', year: 'numeric' });
+      const category = inpCat ? inpCat.value : 'SDS';
+      
+      if (!site.files) site.files = [];
+      site.files.unshift({
+        name: `${fileName}.${ext}`,
+        type: ext,
+        size: sizeStr,
+        date: dateStr,
+        category: category
+      });
+      
+      save();
+      renderCompanyFiles(site);
+      
+      inpName.value = '';
+      inpFile.value = '';
+      toast('Belge başarıyla yüklendi ve site profiline eklendi.');
+    }
+
+    // Company profile recommendation form submit
+  return false;
+}
+
+export function recommendationSubmit(e) {
+    if (e.target.id === 'companyRecommendationForm') {
+      e.preventDefault();
+      if (!ui.activeSiteId) return true;
+      const site = state.sites.find(s => s.id === ui.activeSiteId);
+      if (!site) return true;
+      
+      const inpDesc = $('#inpRecDesc');
+      const inpCat = $('#inpRecCategory');
+      const inpAss = $('#inpRecAssignee');
+      const inpDue = $('#inpRecDueDate');
+      if (!inpDesc || !inpCat || !inpAss || !inpDue) return true;
+      
+      const desc = inpDesc.value.trim();
+      const category = inpCat.value;
+      const assignee = inpAss.value.trim();
+      const dueDateVal = inpDue.value;
+      
+      if (!desc || !assignee || !dueDateVal) return true;
+      
+      const dMatch = dueDateVal.split('-');
+      const formattedDue = dMatch.length === 3 ? `${dMatch[2]} Tem 2026` : '20 Tem 2026';
+      
+      const newRec = {
+        id: `r${Date.now()}`,
+        desc: desc,
+        category: category,
+        assignee: assignee,
+        date: "Bugün",
+        due: formattedDue,
+        status: 'open'
+      };
+      
+      if (!site.recommendations) site.recommendations = [];
+      site.recommendations.unshift(newRec);
+      save();
+      renderCompanyRecommendations(site);
+      
+      inpDesc.value = '';
+      inpAss.value = '';
+      inpDue.value = '';
+      toast('Standart Önleme Önerisi başarıyla kaydedildi.');
+    }
+
+    // Company profile chemical form submit
+  return false;
+}
+
+export function chemicalUsageSubmit(e) {
+    if (e.target.id === 'companyChemicalForm') {
+      e.preventDefault();
+      if (!ui.activeSiteId) return true;
+      const site = state.sites.find(s => s.id === ui.activeSiteId);
+      if (!site) return true;
+      
+      const inpChemSelect = $('#inpChemicalSelect');
+      const inpChemQty = $('#inpChemicalQty');
+      const inpChemArea = $('#inpChemicalArea');
+      const inpChemNotes = $('#inpChemicalNotes');
+      if (!inpChemSelect || !inpChemQty || !inpChemArea || !inpChemNotes) return true;
+      
+      const chemicalId = inpChemSelect.value;
+      const quantity = inpChemQty.value.trim();
+      const area = inpChemArea.value.trim();
+      const notes = inpChemNotes.value.trim();
+      
+      if (!chemicalId || !quantity || !area) return true;
+      
+      const dateStr = new Date().toLocaleDateString('tr-TR', { day: '2-digit', month: 'short', year: 'numeric' });
+      const newChemUse = {
+        id: `cu${Date.now()}`,
+        chemicalId: chemicalId,
+        date: dateStr,
+        quantity: quantity,
+        area: area,
+        tech: state.currentUser ? state.currentUser.name : "Operatör",
+        notes: notes
+      };
+      
+      if (!site.chemicalsUsed) site.chemicalsUsed = [];
+      site.chemicalsUsed.unshift(newChemUse);
+      
+      // Auto-deduct stock from inventory
+      deductStock(chemicalId, quantity);
+      
+      save();
+      renderChemicalUsage(site);
+      
+      inpChemSelect.value = '';
+      inpChemQty.value = '';
+      inpChemArea.value = '';
+      inpChemNotes.value = '';
+    }
+
+    // Stock Refill Form submit
+  return false;
 }

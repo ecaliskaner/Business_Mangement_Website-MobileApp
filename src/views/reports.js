@@ -2,6 +2,8 @@
 
 import { $ } from '../core/dom.js';
 import { modal } from '../ui/modal.js';
+import { toast } from '../core/dom.js';
+import { save } from '../core/state.js';
 
 export function renderReports(){
   const reports=[
@@ -116,4 +118,26 @@ export function openReportModal(reportId) {
   `;
   
   modal.classList.remove('hidden');
+}
+
+
+export function reportCardClicks(e) {
+    const report=e.target.closest('[data-report]');
+    if(report) {
+      const rId = report.dataset.reportId || 'r1';
+      openReportModal(rId);
+      return true;
+    }
+  return false;
+}
+
+export function generateReportSubmit(e) {
+    if(e.target.id==='generateReport'){
+      e.preventDefault();
+      $('#modal').classList.add('hidden');
+      toast('Rapor oluşturuldu. Paylaşım bağlantısı müşteri portalına eklendi.');
+    }
+    
+    // Admin floor plan inspection form save
+  return false;
 }

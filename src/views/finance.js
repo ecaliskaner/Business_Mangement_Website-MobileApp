@@ -2,6 +2,8 @@
 
 import { $ } from '../core/dom.js';
 import { state } from '../core/state.js';
+import { $$, toast } from '../core/dom.js';
+import { save } from '../core/state.js';
 
 export function renderFinance() {
   const tbody = $('#finInvoicesTableBody');
@@ -100,4 +102,48 @@ export function renderFinance() {
       `;
     }).join('');
   }
+}
+
+
+export function invoiceActionClicks(e) {
+    const sendInvoiceBtn = e.target.closest('.send-invoice-btn');
+    if (sendInvoiceBtn) {
+      const invId = sendInvoiceBtn.dataset.invoiceId;
+      const inv = state.invoices.find(i => i.id === invId);
+      if (inv) {
+        inv.status = 'sent';
+        save();
+        renderFinance();
+        toast(`Fatura ${invId} müşteriye başarıyla gönderildi.`);
+      }
+      return true;
+    }
+
+    const payInvoiceBtn = e.target.closest('.pay-invoice-btn');
+    if (payInvoiceBtn) {
+      const invId = payInvoiceBtn.dataset.invoiceId;
+      const inv = state.invoices.find(i => i.id === invId);
+      if (inv) {
+        inv.status = 'paid';
+        save();
+        renderFinance();
+        toast(`Fatura ${invId} ödendi olarak işaretlendi.`);
+      }
+      return true;
+    }
+
+    // Delete mobile chemical usage
+  return false;
+}
+
+export function invoiceFilterClicks(e) {
+    const invFilter = e.target.closest('[data-invoice-filter]');
+    if (invFilter) {
+      $$('[data-invoice-filter]').forEach(b => b.classList.toggle('active', b === invFilter));
+      renderFinance();
+      return true;
+    }
+
+    // File download trigger toast
+  return false;
 }

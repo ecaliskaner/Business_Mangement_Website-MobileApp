@@ -112,3 +112,58 @@ export function deductStock(chemicalId, amountStr) {
     toast(`UYARI: ${item.name} stok seviyesi kritik sınırın altına düştü!`);
   }
 }
+
+
+export function stockRefillSubmit(e) {
+    if (e.target.id === 'invRefillForm') {
+      e.preventDefault();
+      const f = new FormData(e.target);
+      const chemicalId = f.get('chemicalId');
+      const quantity = parseFloat(f.get('quantity')) || 0;
+      const lotNo = f.get('lotNo').trim();
+      const notes = f.get('notes').trim() || 'Depo stok girişi';
+      
+      if (!chemicalId || quantity <= 0 || !lotNo) return true;
+      
+      if (!state.inventory) state.inventory = [];
+      if (!state.inventoryTransactions) state.inventoryTransactions = [];
+      
+      const item = state.inventory.find(i => i.chemicalId === chemicalId);
+      if (item) {
+        item.qty = Math.round((item.qty + quantity) * 10) / 10;
+        item.lotNo = lotNo;
+      } else {
+        const chemInfo = chemicalDatabase.find(c => c.id === chemicalId);
+        state.inventory.push({
+          id: `stock${Date.now()}`,
+          chemicalId: chemicalId,
+          name: chemInfo ? chemInfo.name : 'Yeni Kimyasal',
+          lotNo: lotNo,
+          qty: quantity,
+          unit: chemInfo ? chemInfo.unit : 'kg',
+          minQty: 5.0,
+          unitCost: chemInfo ? chemInfo.unitCost : 100
+        });
+      }
+      
+      const dateStr = new Date().toLocaleDateString('tr-TR', { day: '2-digit', month: 'short', year: 'numeric' });
+      state.inventoryTransactions.unshift({
+        id: `tx${Date.now()}`,
+        chemicalId: chemicalId,
+        type: 'refill',
+        qty: quantity,
+        unit: (chemicalDatabase.find(c => c.id === chemicalId) || {}).unit || 'lt',
+        date: dateStr,
+        notes: notes
+      });
+      
+      save();
+      renderInventory();
+      
+      e.target.reset();
+      toast('Stok girişi başarıyla tamamlandı.');
+    }
+
+    // Desktop Task Chemical Form submit
+  return false;
+}

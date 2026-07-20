@@ -40,11 +40,14 @@ Workable, needs discipline. Rules below are mandatory.
 starting. Never edit a file another session owns — hand off through the
 registry instead.
 
-**1a. `src/app.js` is still shared until 0a-5.** The module split moved every
-view out, but the global event delegator `bind()` remains in `src/app.js` and
-almost every feature needs a handler there. Until it is decomposed, treat
-`src/app.js` like `index.html`: coordinate before editing, keep changes small
-and localised to your own handler block.
+**1a. `src/app.js` is now small (277 lines) and rarely needs editing.** Every
+handler lives with the view that owns it. You only touch `app.js` if you add a
+*new* handler function — and then only to add one name to `CLICK_CHAIN` or
+`SUBMIT_CHAIN`. Keep that edit to a single line so it merges trivially.
+
+> Chain order is significant: it reproduces the original single delegator,
+> including blocks that deliberately fall through. Add your handler at the
+> position matching where its behaviour should run, not blindly at the end.
 
 **2. `index.html` is the main contention point.** Every view has a `<section>`
 in it. Protocol: a session may edit **only its own `<section id="...">`**.

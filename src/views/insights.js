@@ -3,6 +3,7 @@
 import { $ } from '../core/dom.js';
 import { state } from '../core/state.js';
 import { ui } from '../core/session.js';
+import { $$, toast } from '../core/dom.js';
 
 export function renderInsights(){
   const d={all:[34,29,31,24,27,19,22,16],rodent:[13,11,15,9,10,8,7,6],flying:[12,10,9,8,11,7,9,5],crawler:[9,8,7,7,6,4,6,5]}[$('#trendFilter').value];
@@ -163,4 +164,30 @@ export function renderClientAnalytics() {
       <div class="metric-card" style="box-shadow:none; border:1px solid var(--line); background:var(--soft);"><div><span>Son Uygulama</span><strong>${site.chemicalsUsed && site.chemicalsUsed[0] ? site.chemicalsUsed[0].date : '—'}</strong></div></div>
     `;
   }
+}
+
+
+export function insightsClicks(e) {
+    if (e.target.id === 'btnDownloadChart') {
+      const canvas = $('#analyticsCanvas');
+      if (canvas) {
+        const link = document.createElement('a');
+        link.download = `${ui.activeSiteId}_trend_analizi.png`;
+        link.href = canvas.toDataURL();
+        link.click();
+        toast('Grafik PNG olarak indirildi.');
+      }
+      return true;
+    }
+
+    // Analytics filter chip clicks
+    const analyticsFilter = e.target.closest('[data-analytics-filter]');
+    if (analyticsFilter) {
+      $$('[data-analytics-filter]').forEach(b => b.classList.toggle('active', b === analyticsFilter));
+      renderClientAnalytics();
+      return true;
+    }
+
+    // Invoice status actions
+  return false;
 }
