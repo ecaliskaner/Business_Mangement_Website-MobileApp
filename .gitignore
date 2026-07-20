@@ -2,4 +2,8 @@ gemini-code-*
 .gemini/
 .system_generated/
 *.log
-data/state.json
+
+# Runtime-generated demo state (session-local scratch, never commit).
+# Anchored with a leading slash so it does not also match src/core/state.js.
+/data/state.json
+/state.js

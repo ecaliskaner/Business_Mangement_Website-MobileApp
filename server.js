@@ -117,7 +117,12 @@ http.createServer((req, res) => {
     }
 
     const contentType = mimeTypes[path.extname(filePath).toLowerCase()] || 'application/octet-stream';
-    const cacheControl = filePath.endsWith('.html') ? 'no-cache' : 'public, max-age=31536000, immutable';
+    // Source files must never be cached: a stale module is indistinguishable
+    // from a broken one during development. Only true static assets get a
+    // long-lived cache.
+    const ext = path.extname(filePath).toLowerCase();
+    const isSource = ['.html', '.js', '.css', '.json', '.webmanifest'].includes(ext);
+    const cacheControl = isSource ? 'no-cache' : 'public, max-age=31536000, immutable';
     send(res, 200, data, { 'Content-Type': contentType, 'Cache-Control': cacheControl });
   });
 }).listen(port, () => {

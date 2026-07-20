@@ -1,16 +1,26 @@
-const CACHE_NAME = 'ladybug-operations-v1';
+// Bump on every asset-manifest change so old caches are evicted.
+const CACHE_NAME = 'ladybug-operations-v2';
+
 const ASSETS = [
   './',
   './index.html',
   './styles.css',
-  './app.js',
   './manifest.webmanifest',
-  './icon.svg'
+  './icon.svg',
+  './src/app.js',
+  './src/core/dom.js',
+  './src/core/state.js',
+  './src/core/auth.js',
+  './src/data/seed.js',
+  './src/data/catalog.js'
 ];
 
 self.addEventListener('install', event => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then(cache => cache.addAll(ASSETS))
+    // Individual failures must not abort the whole install.
+    caches.open(CACHE_NAME).then(cache => Promise.allSettled(
+      ASSETS.map(asset => cache.add(asset))
+    ))
   );
   self.skipWaiting();
 });
@@ -24,19 +34,27 @@ self.addEventListener('activate', event => {
   self.clients.claim();
 });
 
+// Network-first with cache fallback.
+//
+// The previous cache-first strategy served stale modules indefinitely, which
+// is indistinguishable from a broken build during development and risks
+// demoing outdated code. Network-first keeps the offline story intact (the
+// cache still answers when the network is gone) while guaranteeing that a
+// reachable server always wins.
 self.addEventListener('fetch', event => {
   if (event.request.method !== 'GET') return;
 
+  // Never cache state: it is mutable session data, not an asset.
+  const url = new URL(event.request.url);
+  if (url.pathname.endsWith('/state.js') || url.pathname.startsWith('/api/')) return;
+
   event.respondWith(
-    caches.match(event.request).then(cached => {
-      if (cached) return cached;
-      return fetch(event.request).then(response => {
-        const responseClone = response.clone();
-        caches.open(CACHE_NAME).then(cache => {
-          cache.put(event.request, responseClone).catch(() => {});
-        });
-        return response;
-      }).catch(() => caches.match('./index.html'));
-    })
+    fetch(event.request).then(response => {
+      const clone = response.clone();
+      caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone).catch(() => {}));
+      return response;
+    }).catch(() => caches.match(event.request).then(
+      cached => cached || caches.match('./index.html')
+    ))
   );
 });

@@ -1,296 +1,18 @@
+// Ladybug Operations — application shell.
+// Phase 0a in progress: data + core extracted to ./data and ./core.
+// Views and bind() still live here; see docs/TASKS.md (0a-3 .. 0a-5).
+
+import { initial, techData, techSites } from './data/seed.js';
+import {
+  names, stateLabel, pestDatabase, visitTypes,
+  equipmentTypes, equipmentStatusCodes, chemicalDatabase
+} from './data/catalog.js';
+import { $, $$, toast } from './core/dom.js';
+import { state, save, load, recalculateSiteStats } from './core/state.js';
+import { users } from './core/auth.js';
+
 // Clean stale data from previous versions
 localStorage.removeItem("ladybug-product-demo"); localStorage.removeItem("insectram-product-demo"); localStorage.removeItem("insectram-ops");
-const initial = {
-  view: "dashboard", selectedWork: "WO-2048", selectedTech: "Ayşe Demir", completed: 27,
-  inventory: [
-    { id: 'stock1', chemicalId: 'ch1', name: 'K-Othrine SC 25', lotNo: 'LOT-2026-A1', qty: 25.5, unit: 'lt', minQty: 5.0, unitCost: 350 },
-    { id: 'stock2', chemicalId: 'ch2', name: 'Goliath Gel', lotNo: 'LOT-2026-G9', qty: 120, unit: 'tüp', minQty: 20, unitCost: 450 },
-    { id: 'stock3', chemicalId: 'ch3', name: 'Racumin Paste', lotNo: 'LOT-2025-R4', qty: 85.0, unit: 'kg', minQty: 15.0, unitCost: 180 },
-    { id: 'stock4', chemicalId: 'ch4', name: 'Storm Secure', lotNo: 'LOT-2026-S2', qty: 60.0, unit: 'kg', minQty: 10.0, unitCost: 220 },
-    { id: 'stock5', chemicalId: 'ch5', name: 'Aqua K-Othrine EW 20', lotNo: 'LOT-2026-EW', qty: 40.0, unit: 'lt', minQty: 8.0, unitCost: 380 },
-    { id: 'stock6', chemicalId: 'ch6', name: 'Icon 10 CS', lotNo: 'LOT-2026-I1', qty: 15.0, unit: 'lt', minQty: 3.0, unitCost: 410 },
-    { id: 'stock7', chemicalId: 'ch7', name: 'Maxforce White IC', lotNo: 'LOT-2026-M4', qty: 90, unit: 'tüp', minQty: 15, unitCost: 390 },
-    { id: 'stock8', chemicalId: 'ch8', name: 'Cislin 2.5 UL', lotNo: 'LOT-2026-C2', qty: 30.0, unit: 'lt', minQty: 5.0, unitCost: 520 },
-    { id: 'stock9', chemicalId: 'ch9', name: 'Steri-Fab', lotNo: 'LOT-2026-SF', qty: 50.0, unit: 'lt', minQty: 10.0, unitCost: 290 }
-  ],
-  inventoryTransactions: [
-    { id: 'tx1', chemicalId: 'ch1', type: 'refill', qty: 10, unit: 'lt', date: '01 Tem 2026', notes: 'Merkez depo ikmali' },
-    { id: 'tx2', chemicalId: 'ch3', type: 'refill', qty: 25, unit: 'kg', date: '05 Tem 2026', notes: 'Toplu alım girişi' }
-  ],
-  invoices: [
-    { id: 'INV-1001', siteId: 's1', company: 'Acme Foods', name: 'Gebze Üretim Tesisi', date: '01 Tem 2026', amount: 4000, laborCost: 720, chemicalCost: 380, margin: 72.5, duration: '240 dk', status: 'paid', description: 'Temmuz 2026 Periyodik Hizmet Bedeli' },
-    { id: 'INV-1002', siteId: 's2', company: 'Kuzey Lojistik', name: 'Hadımköy Dağıtım Merkezi', date: '05 Tem 2026', amount: 4800, laborCost: 900, chemicalCost: 550, margin: 69.8, duration: '360 dk', status: 'sent', description: 'Sözleşme Kapsamı Rutin Ziyaret' }
-  ],
-  techRates: {
-    "Ayşe Demir": 180,
-    "Mert Kaya": 150,
-    "Ece Yılmaz": 160,
-    "Can Öztürk": 140
-  },
-  sites: [
-    { 
-      id:"s1", company:"Acme Foods", name:"Gebze Üretim Tesisi", city:"Kocaeli", score:62, state:"risk", issues:3, last:"12 Tem · Ayşe Demir", next:"Bugün, 14:30", color:"#e8d8c7",
-      sector: "Gıda Üretimi & Depolama",
-      contact: { name: "Ahmet Yılmaz", phone: "+90 532 123 4567", email: "ahmet@acmefoods.com" },
-      methods: [
-        { name: "Kemirgen İstasyon Kontrolü", desc: "Tesis dış çevresinde kilitli yem istasyonları ile kemirgen mücadelesi.", active: true },
-        { name: "Yürüyen Haşere İzleme", desc: "Hammadde depolarında yapışkan pheromone tuzakları.", active: true },
-        { name: "Uçan Haşere UV Işıklı Cihazlar", desc: "Ambalaj hattında yapışkan bantlı UV cihaz denetimi.", active: true },
-        { name: "Rezidüel Bariyer İlaçlaması", desc: "Kritik giriş kapılarında kalıcı sıvı ilaç uygulaması.", active: false }
-      ],
-      files: [
-        { name: "Hizmet_Sozlesmesi_2026.pdf", type: "pdf", size: "1.2 MB", date: "02 Ocak 2026" },
-        { name: "Tesis_Risk_Analizi_Raporu.pdf", type: "pdf", size: "3.4 MB", date: "15 Ocak 2026" },
-        { name: "Biyosidal_Urun_Izin_Belgeleri.pdf", type: "pdf", size: "850 KB", date: "12 Şubat 2026" }
-      ],
-      stations: [
-        { code:"R-01", type:"rodent", x:15, y:22, checked:true, status:"clean", baitStatus:"intact", pestType:"none", pestCount:0, notes:"" },
-        { code:"R-02", type:"rodent", x:45, y:28, checked:true, status:"clean", baitStatus:"replaced", pestType:"none", pestCount:0, notes:"" },
-        { code:"R-03", type:"rodent", x:75, y:24, checked:false, status:"unchecked", baitStatus:"intact", pestType:"none", pestCount:0, notes:"" },
-        { code:"C-01", type:"crawler", x:20, y:72, checked:true, status:"activity", baitStatus:"consumed", pestType:"cockroach", pestCount:4, notes:"Hammadde deposu girişinde yoğunlaşma var." },
-        { code:"C-02", type:"crawler", x:50, y:78, checked:false, status:"unchecked", baitStatus:"intact", pestType:"none", pestCount:0, notes:"" },
-        { code:"F-01", type:"flying", x:80, y:68, checked:true, status:"activity", baitStatus:"intact", pestType:"fly", pestCount:12, notes:"Atık alanı yakınındaki cihaz kontrol edilmeli." },
-        { code:"ILT-01", type:"insect_light_trap", x:35, y:48, checked:true, status:"damaged", baitStatus:"missing", pestType:"none", pestCount:0, notes:"UV ampulü patlak, yenilenmesi gerek." },
-        { code:"ILT-02", type:"insect_light_trap", x:65, y:52, checked:false, status:"unchecked", baitStatus:"intact", pestType:"none", pestCount:0, notes:"" }
-      ],
-      serviceScope: {
-        outdoorRodent: { frequency: 2, unit: 'ay', seasonNote: '' },
-        indoorRodent: { frequency: 4, unit: 'ay', seasonNote: '' },
-        crawlingPest: { frequency: 4, unit: 'ay', seasonNote: '' },
-        flyingPest: { frequency: 4, unit: 'ay', seasonNote: 'Nisan-Ekim: 4/ay, Kasım-Mart: 2/ay' },
-        storagePest: { frequency: 4, unit: 'ay', seasonNote: '' }
-      },
-      contract: { taxOffice: 'Gebze VD', taxNo: '1234567890', annualPrice: 48000, monthlyPrice: 4000, extraVisitPrice: 750, emergencyCallPrice: 1500, period: '01.01.2026 - 31.12.2026' },
-      chemicalsUsed: [
-        { id: 'cu1', chemicalId: 'ch1', date: '12 Tem 2026', quantity: '250 ml', area: '500 m²', tech: 'Ayşe Demir', notes: 'Dış çevre rezidüel bariyer uygulaması' },
-        { id: 'cu2', chemicalId: 'ch3', date: '12 Tem 2026', quantity: '400 gr', area: '20 istasyon', tech: 'Ayşe Demir', notes: 'Kemirgen yem istasyonlarına yem yerleştirme' },
-        { id: 'cu3', chemicalId: 'ch2', date: '28 Haz 2026', quantity: '35 gr', area: '120 m²', tech: 'Mert Kaya', notes: 'Hammadde deposu hamamböceği jel uygulaması' }
-      ]
-    },
-    { 
-      id:"s2", company:"Kuzey Lojistik", name:"Hadımköy Dağıtım Merkezi", city:"İstanbul", score:68, state:"risk", issues:2, last:"11 Tem · Mert Kaya", next:"Bugün, 16:00", color:"#d8e9e4",
-      sector: "Lojistik & Depolama",
-      contact: { name: "Banu Gök", phone: "+90 541 456 7890", email: "bgok@kuzeylojistik.com.tr" },
-      methods: [
-        { name: "Kemirgen İstasyon Kontrolü", desc: "Tesis dış çevresinde kilitli yem istasyonları ile kemirgen mücadelesi.", active: true },
-        { name: "Yürüyen Haşere İzleme", desc: "Depo içlerinde yapışkan pheromone tuzakları.", active: true },
-        { name: "Uçan Haşere UV Işıklı Cihazlar", desc: "Kabul bölümünde UV cihaz denetimi.", active: false }
-      ],
-      files: [
-        { name: "Lojistik_Servis_Sozlesmesi.pdf", type: "pdf", size: "980 KB", date: "10 Ocak 2026" },
-        { name: "Hadimkoy_Kroki_Haritasi.pdf", type: "pdf", size: "2.1 MB", date: "11 Ocak 2026" }
-      ],
-      stations: [
-        { code:"R-01", type:"rodent", x:12, y:18, checked:true, status:"clean", baitStatus:"intact", pestType:"none", pestCount:0, notes:"" },
-        { code:"R-02", type:"rodent", x:38, y:22, checked:true, status:"clean", baitStatus:"replaced", pestType:"none", pestCount:0, notes:"" },
-        { code:"R-03", type:"rodent", x:62, y:19, checked:false, status:"unchecked", baitStatus:"intact", pestType:"none", pestCount:0, notes:"" },
-        { code:"R-04", type:"rodent", x:88, y:25, checked:true, status:"activity", baitStatus:"consumed", pestType:"mouse", pestCount:1, notes:"A-3 kapısı dış çevresinde kemirilme var." },
-        { code:"C-01", type:"crawler", x:22, y:58, checked:true, status:"activity", baitStatus:"consumed", pestType:"cockroach", pestCount:2, notes:"Yükleme rampasında yürüye haşere var." },
-        { code:"C-02", type:"crawler", x:72, y:62, checked:false, status:"unchecked", baitStatus:"intact", pestType:"none", pestCount:0, notes:"" },
-        { code:"F-01", type:"flying", x:50, y:82, checked:false, status:"unchecked", baitStatus:"intact", pestType:"none", pestCount:0, notes:"" }
-      ]
-    },
-    { 
-      id:"s3", company:"Aster Hospital", name:"Ataşehir Kampüsü", city:"İstanbul", score:74, state:"watch", issues:1, last:"12 Tem · Ece Yılmaz", next:"14 Tem, 09:00", color:"#e8e0f5",
-      sector: "Sağlık & Hastane",
-      contact: { name: "Dr. Selim Tekin", phone: "+90 533 987 6543", email: "selim.tekin@asterhospital.com" },
-      methods: [
-        { name: "Kemirgen Kokusuz Jel Uygulaması", desc: "Kritik mutfak ve sterilizasyon alanlarında jel ilaçlama.", active: true },
-        { name: "Yürüyen Haşere İzleme", desc: "Koridor ve sosyal alanlarda yapışkan tuzaklar.", active: true },
-        { name: "UV Cihaz Denetimi", desc: "Yemekhane bölümünde UV ışıklı tuzaklar.", active: true }
-      ],
-      files: [
-        { name: "Hastane_Hijyen_Sertifikasi.pdf", type: "pdf", size: "1.5 MB", date: "05 Şubat 2026" },
-        { name: "Biyosidal_Urun_Bildirim_Formu.pdf", type: "pdf", size: "430 KB", date: "20 Şubat 2026" }
-      ],
-      stations: [
-        { code:"R-01", type:"rodent", x:18, y:32, checked:true, status:"clean", baitStatus:"intact", pestType:"none", pestCount:0, notes:"" },
-        { code:"R-02", type:"rodent", x:48, y:38, checked:true, status:"clean", baitStatus:"replaced", pestType:"none", pestCount:0, notes:"" },
-        { code:"R-03", type:"rodent", x:78, y:34, checked:false, status:"unchecked", baitStatus:"intact", pestType:"none", pestCount:0, notes:"" },
-        { code:"C-01", type:"crawler", x:32, y:72, checked:true, status:"clean", baitStatus:"intact", pestType:"none", pestCount:0, notes:"" },
-        { code:"C-02", type:"crawler", x:62, y:78, checked:true, status:"activity", baitStatus:"intact", pestType:"other", pestCount:1, notes:"Gümüşcün böceği görüldü, ilaçlama yapıldı." },
-        { code:"ILT-01", type:"insect_light_trap", x:52, y:18, checked:false, status:"unchecked", baitStatus:"intact", pestType:"none", pestCount:0, notes:"" }
-      ]
-    },
-    { 
-      id:"s4", company:"Bora Retail", name:"Levent Merkez Mağaza", city:"İstanbul", score:81, state:"watch", issues:0, last:"10 Tem · Can Öztürk", next:"15 Tem, 11:00", color:"#f4e6bf",
-      sector: "Perakende & Mağazacılık",
-      contact: { name: "Mustafa Çelik", phone: "+90 535 765 4321", email: "mustafa.celik@boraretail.com" },
-      methods: [
-        { name: "Yürüyen Haşere İzleme", desc: "Raf ve reyon altlarında yapışkan tuzaklar.", active: true },
-        { name: "Uçan Haşere UV Işıklı Cihazlar", desc: "Depo girişinde UV sinek tuzağı.", active: true }
-      ],
-      files: [
-        { name: "Bora_Merkez_Sozlesme.pdf", type: "pdf", size: "750 KB", date: "15 Aralık 2025" }
-      ],
-      stations: [
-        { code:"R-01", type:"rodent", x:22, y:22, checked:true, status:"clean", baitStatus:"intact", pestType:"none", pestCount:0, notes:"" },
-        { code:"R-02", type:"rodent", x:78, y:24, checked:true, status:"clean", baitStatus:"replaced", pestType:"none", pestCount:0, notes:"" },
-        { code:"C-01", type:"crawler", x:28, y:68, checked:true, status:"clean", baitStatus:"intact", pestType:"none", pestCount:0, notes:"" },
-        { code:"C-02", type:"crawler", x:72, y:72, checked:true, status:"clean", baitStatus:"intact", pestType:"none", pestCount:0, notes:"" },
-        { code:"F-01", type:"flying", x:50, y:48, checked:true, status:"clean", baitStatus:"intact", pestType:"none", pestCount:0, notes:"" }
-      ]
-    },
-    { 
-      id:"s5", company:"Novatek", name:"Çayırova Ar-Ge Merkezi", city:"Kocaeli", score:91, state:"healthy", issues:0, last:"12 Tem · Mert Kaya", next:"18 Tem, 10:30", color:"#d7e9f4",
-      sector: "Ar-Ge & Laboratuvar",
-      contact: { name: "Eren Demir", phone: "+90 530 234 5678", email: "eren.demir@novatek.io" },
-      methods: [
-        { name: "Kemirgen İstasyon Kontrolü", desc: "Tesis dış çevresinde kilitli yem istasyonları.", active: true },
-        { name: "Yürüyen Haşere İzleme", desc: "Laboratuvar girişlerinde yapışkan tuzaklar.", active: true }
-      ],
-      files: [
-        { name: "Novatek_Hizmet_Protokolu.pdf", type: "pdf", size: "1.1 MB", date: "10 Ocak 2026" }
-      ],
-      stations: [
-        { code:"R-01", type:"rodent", x:20, y:24, checked:true, status:"clean", baitStatus:"intact", pestType:"none", pestCount:0, notes:"" },
-        { code:"R-02", type:"rodent", x:50, y:22, checked:true, status:"clean", baitStatus:"replaced", pestType:"none", pestCount:0, notes:"" },
-        { code:"R-03", type:"rodent", x:80, y:26, checked:true, status:"clean", baitStatus:"intact", pestType:"none", pestCount:0, notes:"" },
-        { code:"C-01", type:"crawler", x:30, y:72, checked:true, status:"clean", baitStatus:"intact", pestType:"none", pestCount:0, notes:"" },
-        { code:"C-02", type:"crawler", x:70, y:74, checked:true, status:"clean", baitStatus:"intact", pestType:"none", pestCount:0, notes:"" },
-        { code:"ILT-01", type:"insect_light_trap", x:50, y:48, checked:true, status:"clean", baitStatus:"intact", pestType:"none", pestCount:0, notes:"" }
-      ]
-    },
-    { 
-      id:"s6", company:"Orion Hotels", name:"Taksim Otel", city:"İstanbul", score:88, state:"healthy", issues:0, last:"11 Tem · Ece Yılmaz", next:"19 Tem, 13:30", color:"#f0dbe2",
-      sector: "Turizm & Otelcilik",
-      contact: { name: "Selin Şen", phone: "+90 542 345 6789", email: "selin.sen@orionhotels.com" },
-      methods: [
-        { name: "Jel İlaçlama Uygulaması", desc: "Mutfak ve depo alanlarında yürüyen haşere jeli.", active: true },
-        { name: "Fly Trap Cihaz Denetimi", desc: "Lobi ve restaurant alanlarında dekoratif UV cihazları.", active: true },
-        { name: "Kemirgen İstasyon Kontrolü", desc: "Kazan dairesi ve dış çevre kontrol noktaları.", active: true }
-      ],
-      files: [
-        { name: "Orion_Taksim_Servis_Sozlesmesi.pdf", type: "pdf", size: "1.4 MB", date: "28 Aralık 2025" }
-      ],
-      stations: [
-        { code:"R-01", type:"rodent", x:18, y:26, checked:true, status:"clean", baitStatus:"intact", pestType:"none", pestCount:0, notes:"" },
-        { code:"R-02", type:"rodent", x:48, y:22, checked:true, status:"clean", baitStatus:"replaced", pestType:"none", pestCount:0, notes:"" },
-        { code:"R-03", type:"rodent", x:78, y:28, checked:true, status:"clean", baitStatus:"intact", pestType:"none", pestCount:0, notes:"" },
-        { code:"C-01", type:"crawler", x:32, y:68, checked:true, status:"clean", baitStatus:"intact", pestType:"none", pestCount:0, notes:"" },
-        { code:"C-02", type:"crawler", x:68, y:72, checked:true, status:"clean", baitStatus:"intact", pestType:"none", pestCount:0, notes:"" },
-        { code:"ILT-01", type:"insect_light_trap", x:50, y:48, checked:true, status:"clean", baitStatus:"intact", pestType:"none", pestCount:0, notes:"" }
-      ]
-    }
-  ],
-  work: [
-    {id:"WO-2048", siteId:"s1", title:"Kemirgen aktivitesi — acil inceleme", site:"Acme Foods · Gebze Üretim Tesisi", priority:"critical", type:"Kritik bulgu", visitType:"AC", due:"Bugün, 14:30", tech:"Ayşe Demir", description:"R-12 yem istasyonunda yüksek kemirgen aktivitesi tespit edildi. Alanın incelenmesi ve aksiyon planının kayıt altına alınması gerekiyor."},
-    {id:"WO-2047", siteId:"s2", title:"Yükleme alanı istasyon kontrolü", site:"Kuzey Lojistik · Hadımköy DM", priority:"critical", type:"Kritik bulgu", visitType:"RZ", due:"Bugün, 16:00", tech:"Mert Kaya", description:"Yükleme rampası çevresindeki üç istasyon için kontrol ve yenileme servisi planlandı."},
-    {id:"WO-2045", siteId:"s3", title:"Periyodik saha servisi", site:"Aster Hospital · Ataşehir Kampüsü", priority:"high", type:"Planlı servis", visitType:"RZ", due:"14 Tem, 09:00", tech:"Ece Yılmaz", description:"Aylık sözleşme kapsamındaki rutin saha servisi ve dijital istasyon denetimi."},
-    {id:"WO-2042", siteId:"s4", title:"Müşteri talebi — uçan haşere", site:"Bora Retail · Levent Merkez", priority:"high", type:"Müşteri talebi", visitType:"ES", due:"15 Tem, 11:00", tech:"Can Öztürk", description:"Müşteri tarafından bildirilen uçan haşere aktivitesinin yerinde kontrolü."}
-  ]
-};
-let state = load();
-const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
-const names = { dashboard:"Genel bakış", sites:"Tesisler", work:"İş emirleri", team:"Ekip & rota", insights:"Analizler", reports:"Raporlar", companyDetail:"Tesis Detayı & Profil", mobileSim:"Mobil Uygulama", inventory:"Stok & Envanter", finance:"Finans & Fatura" };
-const stateLabel = {risk:"Riskli",watch:"İzlenmeli",healthy:"Sağlıklı"};
-
-const users = {
-  'admin@ladybug.com': { email: 'admin@ladybug.com', name: 'Seda Kaya', role: 'admin', title: 'Operasyon Yöneticisi (Boss)', avatar: 'SK' },
-  'admin@insectram.com': { email: 'admin@ladybug.com', name: 'Seda Kaya', role: 'admin', title: 'Operasyon Yöneticisi (Boss)', avatar: 'SK' },
-  'ayse@ladybug.com': { email: 'ayse@ladybug.com', name: 'Ayşe Demir', role: 'tech', title: 'Baş Teknisyen', avatar: 'AD' },
-  'ayse@insectram.com': { email: 'ayse@ladybug.com', name: 'Ayşe Demir', role: 'tech', title: 'Baş Teknisyen', avatar: 'AD' },
-  'acme@client.com': { email: 'acme@client.com', name: 'Ahmet Çelik', role: 'client', title: 'Acme Gıda Yetkilisi', avatar: 'AC' }
-};
-
-// ===== PEST TAXONOMY DATABASE =====
-const pestDatabase = {
-  rodent: [
-    { code: 'F', name: 'Fare', en: 'Mouse', sci: 'Mus musculus' },
-    { code: 'S', name: 'Sıçan', en: 'Rat', sci: 'Rattus spp.' },
-    { code: '0', name: 'Aktivite Yok', en: 'No Activity', sci: '' }
-  ],
-  crawling: [
-    { code: 'ALH', name: 'Alman Hamamböceği', en: 'German Cockroach', sci: 'Blattella germanica' },
-    { code: 'DOH', name: 'Doğu Hamamböceği', en: 'Oriental Cockroach', sci: 'Blatta orientalis' },
-    { code: 'AMH', name: 'Amerikan Hamamböceği', en: 'American Cockroach', sci: 'Periplaneta americana' },
-    { code: 'K', name: 'Kınkanatlı', en: 'Ground Beetle', sci: 'Carabidae spp.' },
-    { code: 'D', name: 'Diğer Yürüyen', en: 'Other Crawling', sci: '' },
-    { code: '0', name: 'Aktivite Yok', en: 'No Activity', sci: '' }
-  ],
-  flying: [
-    { code: 'KS', name: 'Karasinek', en: 'House Fly', sci: 'Musca domestica' },
-    { code: 'SS', name: 'Sivrisinek', en: 'Mosquito', sci: 'Culicidae spp.' },
-    { code: 'MS', name: 'Meyve Sineği', en: 'Fruit Fly', sci: 'Drosophila spp.' },
-    { code: 'KMS', name: 'Kambur Sineği', en: 'Humpback Fly', sci: 'Phoridae spp.' },
-    { code: 'KUS', name: 'Küçük Sinek', en: 'Small Flies', sci: 'Diptera spp.' },
-    { code: 'ARI', name: 'Arı', en: 'Wasp', sci: 'Vespidae spp.' },
-    { code: 'KEL', name: 'Kelebek (Güve)', en: 'Moth', sci: 'Lepidoptera spp.' },
-    { code: 'D', name: 'Diğer Uçan', en: 'Other Flying', sci: '' },
-    { code: '0', name: 'Aktivite Yok', en: 'No Activity', sci: '' }
-  ],
-  storedProduct: [
-    { code: 'KMG', name: 'Kuru Meyve Güvesi', en: 'Indian Meal Moth', sci: 'Plodia interpunctella' },
-    { code: 'DG', name: 'Değirmen Güvesi', en: 'Mediterranean Flour Moth', sci: 'Ephestia kuehniella' },
-    { code: 'AG', name: 'Arpa Güvesi', en: 'Angoumois Grain Moth', sci: 'Sitotroga cerealella' },
-    { code: 'UG', name: 'Un Güvesi', en: 'Meal Moth', sci: 'Pyralis farinalis' },
-    { code: 'TG', name: 'Tütün Güvesi', en: 'Tobacco Moth', sci: 'Ephestia elutella' },
-    { code: 'UKB', name: 'Un / Kırma Biti', en: 'Flour Beetle', sci: 'Tribolium spp.' },
-    { code: 'BMP', name: 'Buğday/Mısır/Pirinç Biti', en: 'Grain Weevil', sci: 'Sitophilus spp.' },
-    { code: 'TB', name: 'Testereli Böcek', en: 'Saw-toothed Grain Beetle', sci: 'Oryzaephilus spp.' },
-    { code: 'TK', name: 'Tatlı Kurt', en: 'Cigarette Beetle', sci: 'Lasioderma spp.' },
-    { code: 'THB', name: 'Tohum Böcekleri', en: 'Bean Weevil', sci: 'Bruchus spp.' },
-    { code: 'D', name: 'Diğer Depo Zararlısı', en: 'Other Stored Product', sci: '' },
-    { code: '0', name: 'Aktivite Yok', en: 'No Activity', sci: '' }
-  ]
-};
-
-// ===== VISIT TYPES =====
-const visitTypes = [
-  { code: 'RZ', name: 'Rutin Ziyaret', en: 'Routine Visit' },
-  { code: 'TZ', name: 'Takip Ziyareti', en: 'Follow-up Visit' },
-  { code: 'AC', name: 'Acil Çağrı', en: 'Call-out' },
-  { code: 'IZ', name: 'İlaçlama Ziyareti', en: 'Pesticide Application' },
-  { code: 'ILK', name: 'İlk Ziyaret', en: 'First Visit' },
-  { code: 'ES', name: 'Ek Servis', en: 'Extra Visit' },
-  { code: '3G', name: '3. Göz Denetim', en: 'Third Eye Audit' },
-  { code: 'DZ', name: 'Dezenfeksiyon', en: 'Disinfection' }
-];
-
-// ===== EXPANDED EQUIPMENT TYPES =====
-const equipmentTypes = {
-  rodent_bait: { name: 'Kemirgen Yem İstasyonu', en: 'Rodent Bait Box', icon: '🪤', prefix: 'R' },
-  insect_detector: { name: 'Böcek Dedektörü', en: 'Insect Detector', icon: '🔍', prefix: 'BD' },
-  flying_insect_trap: { name: 'Sinek Yakalama Cihazı', en: 'Flying Insect Trap', icon: '💡', prefix: 'F' },
-  sp_insect_trap: { name: 'DZ Bit Tuzağı', en: 'S.P. Insect Trap', icon: '📌', prefix: 'DZB' },
-  catch_alive_trap: { name: 'Canlı Kapan', en: 'Catch Alive Trap', icon: '🏠', prefix: 'CK' },
-  sp_moth_trap: { name: 'DZ Güve Tuzağı', en: 'S.P. Moth Trap', icon: '🦋', prefix: 'DZG' },
-  // Legacy types mapped to new system
-  rodent: { name: 'Kemirgen Yem İstasyonu', en: 'Rodent Bait Box', icon: '🪤', prefix: 'R' },
-  crawler: { name: 'Yürüyen Haşere Monitörü', en: 'Insect Detector', icon: '🔍', prefix: 'C' },
-  flying: { name: 'Uçan Haşere Cihazı', en: 'Flying Insect Trap', icon: '💡', prefix: 'F' },
-  insect_light_trap: { name: 'UV Işıklı Cihaz (ILT)', en: 'Insect Light Trap', icon: '💡', prefix: 'ILT' }
-};
-
-// ===== EXPANDED EQUIPMENT STATUS CODES =====
-const equipmentStatusCodes = {
-  clean: { name: 'Temiz & Sağlam', code: 'OK', color: 'var(--green)' },
-  activity: { name: 'Aktivite Var', code: 'AK', color: 'var(--red)' },
-  damaged: { name: 'Hasarlı / Kırık', code: 'KI', color: 'var(--amber)' },
-  missing: { name: 'Kayıp / Eksik', code: 'KA', color: '#888' },
-  not_accessible: { name: 'Ulaşılamadı', code: 'U', color: '#6b7280' },
-  renewed: { name: 'İstasyon Yenilendi', code: 'Y', color: 'var(--blue)' },
-  bait_changed: { name: 'Yem Değişti', code: 'YD', color: 'var(--violet)' },
-  glue_changed: { name: 'Yapışkan Plaka Değişti', code: 'YPD', color: '#8b5cf6' },
-  unchecked: { name: 'Kontrol Bekliyor', code: 'KB', color: '#d4d4d8' }
-};
-
-// ===== CHEMICAL DATABASE =====
-const chemicalDatabase = [
-  { id: 'ch1', name: 'K-Othrine SC 25', activeIngredient: 'Deltamethrin', concentration: '2.5%', usage: 'Yürüyen & uçan haşere', dosagePerM2: '50 ml/100m²', waterRatio: '5 lt suya 50 ml', category: 'İnsektisit', unitCost: 1.5, unit: 'ml' },
-  { id: 'ch2', name: 'Goliath Gel', activeIngredient: 'Fipronil', concentration: '0.05%', usage: 'Hamamböceği jel uygulaması', dosagePerM2: '3 nokta/m²', waterRatio: 'Doğrudan uygulama', category: 'İnsektisit Jel', unitCost: 15.0, unit: 'gr' },
-  { id: 'ch3', name: 'Racumin Paste', activeIngredient: 'Coumatetralyl', concentration: '0.0375%', usage: 'Kemirgen yem istasyonu', dosagePerM2: '20 gr/istasyon', waterRatio: 'Doğrudan uygulama', category: 'Rodentisit', unitCost: 0.8, unit: 'gr' },
-  { id: 'ch4', name: 'Storm Secure', activeIngredient: 'Flocoumafen', concentration: '0.005%', usage: 'Kemirgen mücadelesi', dosagePerM2: '50 gr/istasyon', waterRatio: 'Doğrudan uygulama', category: 'Rodentisit', unitCost: 1.2, unit: 'gr' },
-  { id: 'ch5', name: 'Aqua K-Othrine EW 20', activeIngredient: 'Deltamethrin', concentration: '2%', usage: 'Rezidüel ilaçlama', dosagePerM2: '50 ml/100m²', waterRatio: '10 lt suya 25 ml', category: 'İnsektisit', unitCost: 1.8, unit: 'ml' },
-  { id: 'ch6', name: 'Icon 10 CS', activeIngredient: 'Lambda-cyhalothrin', concentration: '10%', usage: 'Dış alan bariyer ilaçlama', dosagePerM2: '100 ml/100m²', waterRatio: '10 lt suya 10 ml', category: 'İnsektisit', unitCost: 2.2, unit: 'ml' },
-  { id: 'ch7', name: 'Maxforce White IC', activeIngredient: 'Imidacloprid', concentration: '2.15%', usage: 'Hamamböceği jel', dosagePerM2: '3 nokta/m²', waterRatio: 'Doğrudan uygulama', category: 'İnsektisit Jel', unitCost: 12.0, unit: 'gr' },
-  { id: 'ch8', name: 'Cislin 2.5 UL', activeIngredient: 'Deltamethrin', concentration: '2.5%', usage: 'ULV fogger uygulama', dosagePerM2: '1 ml/m³', waterRatio: 'Doğrudan ULV', category: 'ULV İnsektisit', unitCost: 3.5, unit: 'ml' },
-  { id: 'ch9', name: 'Steri-Fab', activeIngredient: 'İzopropil Alkol + Phenothrin', concentration: 'Karışım', usage: 'Dezenfeksiyon & haşere', dosagePerM2: '100 ml/10m²', waterRatio: 'Doğrudan sprey', category: 'Dezenfektan', unitCost: 0.9, unit: 'ml' },
-  { id: 'ch10', name: 'Actellic 50 EC', activeIngredient: 'Pirimiphos-methyl', concentration: '50%', usage: 'Depo zararlıları fumigasyon', dosagePerM2: '100 ml/100m²', waterRatio: '10 lt suya 50 ml', category: 'Depo İnsektisit', unitCost: 2.5, unit: 'ml' },
-  { id: 'ch11', name: 'Demand CS', activeIngredient: 'Lambda-cyhalothrin', concentration: '10%', usage: 'Genel haşere mücadelesi', dosagePerM2: '50 ml/100m²', waterRatio: '10 lt suya 12.5 ml', category: 'İnsektisit', unitCost: 2.0, unit: 'ml' },
-  { id: 'ch12', name: 'Responsar SC', activeIngredient: 'Alfasipermetrin', concentration: '10%', usage: 'Dış çevre ilaçlama', dosagePerM2: '100 ml/100m²', waterRatio: '10 lt suya 20 ml', category: 'İnsektisit', unitCost: 1.6, unit: 'ml' }
-];
-
 function applyRoleAccess() {
   if (!state.currentUser) return;
   
@@ -401,47 +123,6 @@ let mobQrStarted = false;
 let mobOfflineReady = false;
 let activeMobileStationCode = null;
 
-function load(){
-  try {
-    const saved = window.__LADYBUG_STATE__ || JSON.parse(localStorage.getItem("ladybug-ops"));
-    if (!saved) return structuredClone(initial);
-    // Detect stale data missing new fields and reset
-    if (!saved.inventory || (saved.sites && saved.sites[0] && !saved.sites[0].chemicalsUsed)) {
-      localStorage.removeItem("ladybug-ops");
-      return structuredClone(initial);
-    }
-    // Initialize recommendations and new arrays for all sites if missing
-    saved.sites.forEach((s) => {
-      if (!s.recommendations) {
-        s.recommendations = [
-          { id: "r1", desc: `${s.name} dış çevre kapı eşiğindeki conta yıpranmış, kemirgen geçişini önlemek için yenilenmeli.`, category: "BRCGS", assignee: "Tesis Bakım Departmanı", date: "10 Haz 2026", due: "25 Tem 2026", status: "open" },
-          { id: "r2", desc: "Üretim holü sevkiyat rampası A-2 kapısına hava perdesi veya pvc şerit bariyer takılmalı.", category: "AIB", assignee: "Operasyon Yöneticisi", date: "05 Tem 2026", due: "10 Ağu 2026", status: "open" }
-        ];
-      }
-      if (!s.chemicalsUsed) s.chemicalsUsed = [];
-      if (s.serviceScope === undefined) s.serviceScope = null;
-      if (s.contract === undefined) s.contract = null;
-    });
-    // Ensure all work orders have visitType
-    if (saved.work) {
-      saved.work.forEach(w => {
-        if (!w.visitType) w.visitType = 'RZ';
-      });
-    }
-    return {...structuredClone(initial),...saved};
-  } catch { return structuredClone(initial); }
-}
- function save(){
-  localStorage.setItem("ladybug-ops",JSON.stringify(state));
-  const persistableState = structuredClone(state);
-  delete persistableState.currentUser;
-  fetch("./api/state", {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(persistableState)
-  }).catch(() => {});
-}
-function toast(message){const el=$("#toast");el.textContent=message;el.classList.remove("hidden");clearTimeout(toast.t);toast.t=setTimeout(()=>el.classList.add("hidden"),3000)}
 
 function setView(view){
   state.view=view;
@@ -464,24 +145,6 @@ function setView(view){
   }
 }
 
-function recalculateSiteStats(site) {
-  if (!site.stations) site.stations = [];
-  const total = site.stations.length;
-  if (total === 0) return;
-  const checked = site.stations.filter(s => s.checked).length;
-  const activityCount = site.stations.filter(s => s.checked && s.status === 'activity').reduce((sum, s) => sum + (s.pestCount || 0), 0);
-  const damagedCount = site.stations.filter(s => s.checked && (s.status === 'damaged' || s.status === 'missing')).length;
-  
-  site.issues = site.stations.filter(s => s.status === 'activity' || s.status === 'damaged' || s.status === 'missing').length;
-  
-  // Base score 100, drops by pest activity and physical damage
-  let score = 100 - (activityCount * 8) - (damagedCount * 15);
-  site.score = Math.max(10, Math.min(100, score));
-  
-  if (site.score >= 85) site.state = 'healthy';
-  else if (site.score >= 70) site.state = 'watch';
-  else site.state = 'risk';
-}
 
 function riskRows(){
   return state.work.filter(w => !w.completed).slice(0,3).map(w=>`
@@ -715,8 +378,6 @@ function renderTask(){
   `;
 }
 
-const techData={"Ayşe Demir":['AD','Müşteride','Gebze Üretim Tesisi','İlk QR 10:11','2 dk önce','#efe5d8'],"Mert Kaya":['MK','Yolda','Hadımköy Dağıtım Merkezi','Son QR 09:42','4 dk önce','#dce9f7'],"Ece Yılmaz":['EY','Müşteride','Taksim Otel','İlk QR 09:36','1 dk önce','#e8dff4'],"Can Öztürk":['CÖ','Rotada','Levent Merkez Mağaza','Son QR 08:58','6 dk önce','#f1e4d5']};
-const techSites = {"Ayşe Demir":"s1","Mert Kaya":"s2","Ece Yılmaz":"s6","Can Öztürk":"s4"};
 
 function renderTeam(){
   const d=techData[state.selectedTech];
@@ -3994,3 +3655,7 @@ function renderFinance() {
 bind();
 checkSession();
 render();
+
+
+// Inline onclick handlers in generated markup need global scope.
+Object.assign(window, { showStationDetail, switchCompanyTab });

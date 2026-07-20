@@ -12,7 +12,37 @@ npm start
 
 Then open the local URL printed in the terminal.
 
-You can still open `index.html` directly for a pure static preview, but the persistent demo state and offline caching work best through the local server.
+> **The server is now required.** The app loads as ES modules, and browsers
+> block module imports over `file://`. Opening `index.html` directly will show
+> a blank page. Use `npm start`.
+
+To run a second instance alongside the first (see `docs/SESSIONS.md`):
+
+```bash
+PORT=4174 npm start
+```
+
+## Project structure
+
+```
+src/
+  app.js            application shell — views + event binding
+  core/
+    dom.js          $, $$, toast
+    state.js        load / save / derived stats
+    auth.js         demo user directory
+  data/
+    seed.js         sites, stations, work orders, technicians
+    catalog.js      pest taxonomy, visit types, equipment, chemicals
+docs/
+  PLAN.md           phased build plan
+  TASKS.md          task board
+  SESSIONS.md       running multiple sessions in parallel
+  COMPETITOR.md     Insectram feature baseline
+```
+
+`state.js` and `data/state.json` are generated at runtime and gitignored —
+treat them as session-local scratch.
 
 ## Demo flow
 
