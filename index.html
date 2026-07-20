@@ -569,6 +569,50 @@
 
                       <hr class="divider" style="margin:10px 0;">
 
+                      <!-- Device identity & replacement (roadmap §8). The point
+                           number is permanent; only the barcode changes on a
+                           swap, so the reading history below spans devices. -->
+                      <div class="device-block" id="deviceBlock">
+                        <div class="placement-block-head">
+                          <p class="overline" style="margin:0;">CİHAZ KİMLİĞİ</p>
+                          <span class="status-chip blue" id="detDeviceGeneration">1. cihaz</span>
+                        </div>
+
+                        <div class="device-current" id="detDeviceCurrent"></div>
+
+                        <button type="button" class="secondary-btn device-swap-toggle" id="btnToggleDeviceSwap">⇄ Cihazı Değiştir / Yenile</button>
+
+                        <form id="deviceReplacementForm" class="device-swap-form hidden">
+                          <label class="placement-field">
+                            <span class="placement-label">Değişim Nedeni<small>Reason</small></span>
+                            <select name="reasonCode" class="form-select" required>
+                              <option value="KI">Kırık (KI — Broken)</option>
+                              <option value="KA">Kayıp (KA — Lost)</option>
+                              <option value="Y">İstasyon Yenilendi (Y — Renewed)</option>
+                            </select>
+                          </label>
+                          <label class="placement-field">
+                            <span class="placement-label">Yeni Barkod<small>New barcode — point number is unchanged</small></span>
+                            <input type="text" name="newBarcode" class="form-input" id="inpNewBarcode" required>
+                          </label>
+                          <label class="placement-field">
+                            <span class="placement-label">Not<small>Note</small></span>
+                            <input type="text" name="note" class="form-input" placeholder="Örn: Sevkiyat aracı çarptı">
+                          </label>
+                          <p class="device-swap-hint" id="deviceSwapHint"></p>
+                          <div class="device-swap-actions">
+                            <button type="button" class="text-btn" id="btnCancelDeviceSwap">Vazgeç</button>
+                            <button type="submit" class="primary-btn device-swap-save">Değişimi Kaydet</button>
+                          </div>
+                        </form>
+
+                        <div class="device-timeline" id="detDeviceTimeline"></div>
+
+                        <div class="point-history" id="detPointHistory"></div>
+                      </div>
+
+                      <hr class="divider" style="margin:10px 0;">
+
                       <form id="adminInspectionForm">
                         <label class="form-label">
                           Yem Tüketim Durumu
@@ -749,8 +793,11 @@
               <div class="tab-pane hidden" id="paneCompRecommendations">
                 <article class="panel" style="margin-bottom:16px;">
                   <h2>Zararlı Önleme Önerileri & Aksiyon Kayıtları</h2>
-                  <p class="text-muted" style="font-size:12px; margin-bottom:20px;">BRCGS, AIB ve ISO 22000 standartlarına uyum kapsamında tesis için açılan düzeltici faaliyet önerileri.</p>
-                  
+                  <p class="text-muted" style="font-size:12px; margin-bottom:16px;">BRCGS, AIB ve ISO 22000 standartlarına uyum kapsamında tesis için açılan düzeltici faaliyet önerileri. Her öneri kapalı döngü olarak izlenir: teknisyen bulguyu fotoğrafla açar → müşteri aksiyon alıp fotoğraf yükler → teknisyen kapanışı onaylar.</p>
+
+                  <!-- Closed-loop stage summary -->
+                  <div class="rec-loop-summary" id="recLoopSummary"></div>
+
                   <div class="table-panel" style="border:1px solid var(--line); border-radius:8px; margin-bottom:20px; overflow:auto;">
                     <table>
                       <thead>
@@ -760,7 +807,7 @@
                           <th>Sorumlu</th>
                           <th>Oluşturma Tarihi</th>
                           <th>Hedef Tarih</th>
-                          <th>Durum</th>
+                          <th>Döngü Aşaması</th>
                           <th>İşlem</th>
                         </tr>
                       </thead>
@@ -769,8 +816,14 @@
                       </tbody>
                     </table>
                   </div>
+
+                  <!-- Closed-loop detail: photo evidence and the role-specific
+                       action for whichever step the finding is waiting on. -->
+                  <div class="rec-loop-detail" id="recLoopDetail">
+                    <p class="rec-loop-placeholder">Kapalı döngü detayını görmek için tablodan bir öneri seçin.</p>
+                  </div>
                 </article>
-                
+
                 <article class="panel">
                   <p class="overline">YENİ UYUMSUZLUK / ÖNERİ KAYDI AÇ</p>
                   <form class="form-grid" id="companyRecommendationForm" style="grid-template-columns: 2fr 1fr 1fr 1fr auto; align-items: end; gap:12px; margin-top:8px;">

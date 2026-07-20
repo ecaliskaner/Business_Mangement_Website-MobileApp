@@ -23,6 +23,7 @@ import {
   siteCardClicks, backNavClicks, planToolbarClicks, planCanvasClicks,
   companyTabClicks, fileDownloadClicks, editSiteSubmit, adminInspectionSubmit,
   fileUploadSubmit, recommendationSubmit, chemicalUsageSubmit, placementSubmit,
+  deviceReplacementSubmit, lifecycleClicks, recCustomerResponseSubmit, recApprovalSubmit,
   showStationDetail, switchCompanyTab, showCompanyDetail
 } from './views/companyDetail.js';
 import { reportCardClicks, generateReportSubmit } from './views/reports.js';
@@ -225,6 +226,7 @@ const CLICK_CHAIN = [
   planToolbarClicks,
   reportCardClicks,
   mobileMenuClicks,
+  lifecycleClicks,
   planCanvasClicks,
   mobileClicks,
   companyTabClicks,
@@ -244,6 +246,9 @@ const SUBMIT_CHAIN = [
   createSiteSubmit,
   generateReportSubmit,
   placementSubmit,
+  deviceReplacementSubmit,
+  recCustomerResponseSubmit,
+  recApprovalSubmit,
   adminInspectionSubmit,
   fileUploadSubmit,
   recommendationSubmit,

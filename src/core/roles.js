@@ -5,6 +5,7 @@ import { $, $$, toast } from '../core/dom.js';
 import { state } from '../core/state.js';
 import { ui } from '../core/session.js';
 import { setView } from '../core/router.js';
+import { showCompanyDetail } from '../views/companyDetail.js';
 
 export function applyRoleAccess() {
   if (!state.currentUser) return;
@@ -70,8 +71,11 @@ export function applyRoleAccess() {
     $('#newWorkOrder')?.classList.add('hidden');
     $('#newWorkOrderSecondary')?.classList.add('hidden');
     
-    ui.activeSiteId = 's1'; 
-    setView('companyDetail');
+    // `setView` only toggles which section is visible — it does not populate
+    // the facility page. The client role starts here, so it has to be rendered
+    // explicitly or the customer lands on an empty screen.
+    ui.activeSiteId = 's1';
+    showCompanyDetail('s1');
     
     $('#backToSitesFromCompBtn')?.classList.add('hidden');
     $('#companyFileUploadForm')?.classList.add('hidden');

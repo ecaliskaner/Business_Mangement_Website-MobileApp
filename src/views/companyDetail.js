@@ -13,6 +13,10 @@ import { modal, printQrCodeSticker } from '../ui/modal.js';
 import { deductStock } from '../views/inventory.js';
 import { showMobileInspect } from '../views/mobile.js';
 import { renderSites } from '../views/sites.js';
+import {
+  barcodeFor, deviceReplacements, pointDeviceSummary, readingsForPoint,
+  recommendationsForSite, replacementReasons
+} from '../data/history.js';
 
 export function showCompanyDetail(siteId) {
   ui.activeSiteId = siteId;
@@ -200,35 +204,284 @@ export function renderCompanyFiles(site) {
   }).join('') || '<tr><td colspan="5" class="empty" style="text-align:center;">Henüz yüklenmiş belge bulunmuyor.</td></tr>';
 }
 
+// ===== Closed-loop recommendation workflow (task 1-6) =====
+//
+// Roadmap §9: the technician photographs the problem and sets a deadline; the
+// customer uploads a photo of the same area once they have acted; finally the
+// technician approves whether the completed action is adequate. Three roles,
+// one loop, with the stage visible at every step.
+
+// Which finding the detail panel is showing, and the photo the customer has
+// attached but not yet submitted. Both are view state, so they stay local
+// rather than going into the shared `ui` cursor holder.
+let activeRecId = null;
+let pendingCustomerPhoto = null;
+
+// `waitingStep` is the step the loop is currently sitting on — the one the
+// stepper highlights and whose owner gets the controls. 0 means the loop is
+// closed and nobody is waiting.
+export const LOOP_STAGES = {
+  raised:            { label: 'Bulgu Açıldı',         short: 'Açık',          chip: 'critical', waitingStep: 2, order: 1, actor: 'Müşteri aksiyonu bekleniyor' },
+  customer_actioned: { label: 'Müşteri Aksiyon Aldı', short: 'Onay Bekliyor', chip: 'warning',  waitingStep: 3, order: 2, actor: 'Teknisyen onayı bekleniyor' },
+  rejected:          { label: 'Onaylanmadı',          short: 'Reddedildi',    chip: 'critical', waitingStep: 2, order: 2, actor: 'Müşterinin tekrar aksiyon alması gerekiyor' },
+  approved:          { label: 'Onaylandı & Kapatıldı', short: 'Kapandı',      chip: 'healthy',  waitingStep: 0, order: 3, actor: 'Döngü tamamlandı' }
+};
+
+// User-driven lifecycle changes live in state (so they survive a reload) and
+// are layered over the generated history when rendering, rather than mutating
+// the history module's cache.
+function lifecycleOverlay() {
+  if (!state.recLifecycle) state.recLifecycle = {};
+  return state.recLifecycle;
+}
+
+/**
+ * Findings for a site from both sources — the 12-month generated history and
+ * any raised by hand during the demo — normalised onto one shape, with the
+ * lifecycle overlay applied.
+ */
+export function loopRecommendations(site) {
+  const overlay = lifecycleOverlay();
+
+  const fromHistory = recommendationsForSite(site.id).map(r => ({
+    id: r.id,
+    source: 'history',
+    desc: r.desc,
+    category: r.category,
+    assignee: r.assignee || 'Tesis Yetkilisi',
+    tech: r.tech,
+    date: r.date,
+    dueDate: r.dueDate,
+    stationCode: r.stationCode,
+    stage: r.stage,
+    status: r.status,
+    photoBefore: r.photoBefore,
+    photoAfter: r.photoAfter,
+    customerNote: r.customerNote,
+    customerRespondedDate: r.customerRespondedDate,
+    approvedBy: r.approvedBy,
+    approvedDate: r.approvedDate,
+    rejectionNote: r.rejectionNote
+  }));
+
+  const fromSite = (site.recommendations || []).map((r, index) => ({
+    id: r.id || `RS-${index}`,
+    source: 'site',
+    siteIndex: index,
+    desc: r.desc,
+    category: r.category,
+    assignee: r.assignee,
+    tech: r.tech || (state.currentUser ? state.currentUser.name : 'Teknisyen'),
+    date: r.date,
+    dueDate: r.due,
+    stationCode: r.stationCode || null,
+    // Hand-raised findings start at the same first step of the loop.
+    stage: r.status === 'resolved' ? 'approved' : 'raised',
+    status: r.status,
+    photoBefore: r.photoBefore || { kind: 'simulated', label: 'Tespit anı', ref: `${r.id || index}-before` },
+    photoAfter: r.photoAfter || null,
+    customerNote: null,
+    customerRespondedDate: null,
+    approvedBy: null,
+    approvedDate: null,
+    rejectionNote: null
+  }));
+
+  return [...fromSite, ...fromHistory]
+    .map(r => ({ ...r, ...(overlay[r.id] || {}) }))
+    .sort((a, b) => LOOP_STAGES[a.stage].order - LOOP_STAGES[b.stage].order);
+}
+
+// Photos are held as descriptors. A simulated one is drawn as an SVG so the
+// demo always has evidence to show; a real upload carries its own data URL.
+export function recPhotoSrc(photo) {
+  if (!photo) return null;
+  if (photo.kind === 'upload') return photo.dataUrl;
+
+  // Deterministic tint from the ref, so the same finding always looks the same.
+  let h = 0;
+  for (let i = 0; i < (photo.ref || '').length; i++) h = (h * 31 + photo.ref.charCodeAt(i)) % 360;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="320" height="200" viewBox="0 0 320 200">
+    <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="hsl(${h},32%,62%)"/><stop offset="1" stop-color="hsl(${(h + 40) % 360},28%,38%)"/>
+    </linearGradient></defs>
+    <rect width="320" height="200" fill="url(#g)"/>
+    <rect x="18" y="18" width="284" height="164" fill="none" stroke="rgba(255,255,255,.45)" stroke-width="2" stroke-dasharray="7 5"/>
+    <circle cx="160" cy="88" r="26" fill="none" stroke="rgba(255,255,255,.75)" stroke-width="3"/>
+    <path d="M147 88h26M160 75v26" stroke="rgba(255,255,255,.75)" stroke-width="3"/>
+    <text x="160" y="140" font-family="DM Sans,sans-serif" font-size="14" font-weight="700" fill="#fff" text-anchor="middle">${photo.label || 'Saha fotoğrafı'}</text>
+    <text x="160" y="160" font-family="DM Sans,sans-serif" font-size="10" fill="rgba(255,255,255,.85)" text-anchor="middle">simüle görsel · ${photo.ref || ''}</text>
+  </svg>`;
+  return `data:image/svg+xml,${encodeURIComponent(svg)}`;
+}
+
+function photoTile(photo, fallbackLabel) {
+  if (!photo) {
+    return `<div class="rec-photo empty"><span>${fallbackLabel}</span></div>`;
+  }
+  const badge = photo.kind === 'upload' ? 'Yüklendi' : 'Simüle';
+  return `<div class="rec-photo">
+      <img src="${recPhotoSrc(photo)}" alt="${photo.label || ''}">
+      <span class="rec-photo-badge">${badge}</span>
+    </div>`;
+}
+
 export function renderCompanyRecommendations(site) {
   const tbody = $('#compRecommendationsTableBody');
   if (!tbody) return;
   if (!site.recommendations) site.recommendations = [];
-  
+
+  const recs = loopRecommendations(site);
+  const role = state.currentUser ? state.currentUser.role : 'admin';
+
   const countLabel = $('#compRecsCount');
-  if (countLabel) countLabel.textContent = site.recommendations.filter(r => r.status === 'open').length;
-  
-  tbody.innerHTML = site.recommendations.map((r, index) => {
-    const isClosed = r.status === 'resolved';
-    const statusText = isClosed ? 'Giderildi' : 'Açık Bulgu';
-    const badgeClass = isClosed ? 'healthy' : 'critical';
-    
+  if (countLabel) countLabel.textContent = recs.filter(r => r.stage !== 'approved').length;
+
+  renderLoopSummary(recs);
+
+  tbody.innerHTML = recs.map(r => {
+    const stage = LOOP_STAGES[r.stage] || LOOP_STAGES.raised;
+    const selected = r.id === activeRecId ? ' class="rec-row-selected"' : '';
     return `
-      <tr>
-        <td><b>${r.desc}</b></td>
+      <tr data-rec-id="${r.id}"${selected} style="cursor:pointer;">
+        <td><b>${r.desc}</b>${r.stationCode ? `<br><small class="text-muted">Nokta: ${r.stationCode}</small>` : ''}</td>
         <td><span class="status-chip secondary" style="font-size:9px; font-weight:700;">${r.category}</span></td>
         <td>${r.assignee}</td>
         <td><small class="text-muted">${r.date}</small></td>
-        <td><small>${r.due}</small></td>
-        <td><span class="status-chip ${badgeClass}">${statusText}</span></td>
-        <td>
-          <button class="text-btn toggle-rec-btn" data-rec-index="${index}" style="padding:0; font-size:11px; font-weight:700; color:${isClosed ? 'var(--blue)' : 'var(--green)'}">
-            ${isClosed ? 'Aç Geri ↺' : 'Giderildi Yap ✓'}
-          </button>
-        </td>
-      </tr>
-    `;
+        <td><small>${r.dueDate || '—'}</small></td>
+        <td><span class="status-chip ${stage.chip}">${stage.short}</span></td>
+        <td><button class="text-btn rec-open-btn" data-rec-id="${r.id}" style="padding:0; font-size:11px; font-weight:700;">${nextActionLabel(r, role)}</button></td>
+      </tr>`;
   }).join('') || '<tr><td colspan="7" class="empty" style="text-align:center;">Henüz açılmış bir öneri kaydı bulunmuyor.</td></tr>';
+
+  // Keep the detail panel in sync with whatever is selected.
+  if (activeRecId && recs.some(r => r.id === activeRecId)) {
+    renderRecLoopDetail(site, activeRecId);
+  }
+}
+
+// What this role can do next on this finding — drives both the row button and
+// the detail panel's call to action.
+function nextActionLabel(rec, role) {
+  if (rec.stage === 'approved') return 'Görüntüle';
+  if (role === 'client') return (rec.stage === 'raised' || rec.stage === 'rejected') ? 'Aksiyon Bildir →' : 'Görüntüle';
+  if (rec.stage === 'customer_actioned') return 'Onayla / Reddet →';
+  return 'Görüntüle';
+}
+
+function renderLoopSummary(recs) {
+  const el = $('#recLoopSummary');
+  if (!el) return;
+  const count = (s) => recs.filter(r => r.stage === s).length;
+  const cells = [
+    ['raised', 'Açık Bulgu', count('raised')],
+    ['customer_actioned', 'Onay Bekliyor', count('customer_actioned')],
+    ['rejected', 'Reddedildi', count('rejected')],
+    ['approved', 'Kapandı', count('approved')]
+  ];
+  el.innerHTML = cells.map(([key, label, n]) =>
+    `<div class="rec-loop-stat ${key}"><strong>${n}</strong><span>${label}</span></div>`).join('');
+}
+
+export function renderRecLoopDetail(site, recId) {
+  const el = $('#recLoopDetail');
+  if (!el) return;
+
+  const rec = loopRecommendations(site).find(r => r.id === recId);
+  if (!rec) {
+    el.innerHTML = '<p class="rec-loop-placeholder">Kapalı döngü detayını görmek için tablodan bir öneri seçin.</p>';
+    return;
+  }
+
+  const role = state.currentUser ? state.currentUser.role : 'admin';
+  const stage = LOOP_STAGES[rec.stage] || LOOP_STAGES.raised;
+
+  const steps = [
+    { n: 1, title: 'Teknisyen bulguyu açtı', who: rec.tech, when: rec.date, done: true },
+    { n: 2, title: 'Müşteri aksiyon aldı', who: rec.assignee, when: rec.customerRespondedDate, done: !!rec.customerRespondedDate },
+    { n: 3, title: 'Teknisyen onayladı', who: rec.approvedBy, when: rec.approvedDate, done: rec.stage === 'approved' }
+  ];
+
+  const stepper = steps.map(s => `
+    <li class="rec-step ${s.done ? 'done' : ''} ${(!s.done && s.n === stage.waitingStep) ? 'current' : ''}">
+      <span class="rec-step-no">${s.done ? '✓' : s.n}</span>
+      <span class="rec-step-body">
+        <b>${s.title}</b>
+        <small>${s.done ? `${s.who || '—'} · ${s.when || '—'}` : 'bekliyor'}</small>
+      </span>
+    </li>`).join('');
+
+  el.innerHTML = `
+    <div class="rec-detail-head">
+      <div>
+        <p class="overline" style="margin:0;">KAPALI DÖNGÜ · ${rec.id}</p>
+        <h3 class="rec-detail-title">${rec.desc}</h3>
+        <p class="rec-detail-meta">${rec.category}${rec.stationCode ? ` · Nokta ${rec.stationCode}` : ''} · Termin: <b>${rec.dueDate || '—'}</b></p>
+      </div>
+      <span class="status-chip ${stage.chip} rec-detail-stage">${stage.label}</span>
+    </div>
+
+    <ol class="rec-stepper">${stepper}</ol>
+
+    <div class="rec-photos">
+      <figure>
+        <figcaption>ÖNCE — tespit fotoğrafı</figcaption>
+        ${photoTile(rec.photoBefore, 'Fotoğraf yok')}
+      </figure>
+      <figure>
+        <figcaption>SONRA — aksiyon fotoğrafı</figcaption>
+        ${photoTile(rec.photoAfter, 'Müşteri henüz yüklemedi')}
+      </figure>
+    </div>
+
+    ${rec.customerNote ? `<p class="rec-note customer"><b>Müşteri notu:</b> ${rec.customerNote}</p>` : ''}
+    ${rec.rejectionNote ? `<p class="rec-note reject"><b>Onaylanmama nedeni:</b> ${rec.rejectionNote}</p>` : ''}
+
+    <p class="rec-waiting-on">⏳ ${stage.actor}</p>
+
+    ${renderRecActions(rec, role)}`;
+}
+
+// Only the role that owns the current step gets controls; everyone else sees
+// why they cannot act.
+function renderRecActions(rec, role) {
+  const isTech = role === 'tech' || role === 'admin';
+
+  if (rec.stage === 'approved') {
+    return `<div class="rec-actions closed">✓ Bu bulgu ${rec.approvedDate || ''} tarihinde ${rec.approvedBy || 'teknisyen'} tarafından onaylanarak kapatıldı.</div>`;
+  }
+
+  if (role === 'client') {
+    if (rec.stage === 'raised' || rec.stage === 'rejected') {
+      return `
+        <form class="rec-actions rec-customer-form" id="recCustomerForm" data-rec-id="${rec.id}">
+          <p class="rec-actions-title">Aksiyonu bildirin — aynı alanın fotoğrafını yükleyin</p>
+          <input type="file" accept="image/*" class="form-input rec-file" id="inpRecPhoto">
+          <button type="button" class="secondary-btn rec-sim-photo" id="btnSimulateRecPhoto">📷 Fotoğrafı Simüle Et</button>
+          <textarea class="form-textarea" name="customerNote" rows="2" placeholder="Alınan aksiyonu kısaca açıklayın..." required></textarea>
+          <div class="rec-photo-preview hidden" id="recPhotoPreview"></div>
+          <button type="submit" class="primary-btn">Aksiyonu Gönder →</button>
+        </form>`;
+    }
+    return `<div class="rec-actions waiting">Aksiyonunuz iletildi. Repellent teknisyeninin onayı bekleniyor.</div>`;
+  }
+
+  if (isTech) {
+    if (rec.stage === 'customer_actioned') {
+      return `
+        <form class="rec-actions rec-approve-form" id="recApprovalForm" data-rec-id="${rec.id}">
+          <p class="rec-actions-title">Müşteri aksiyonunu değerlendirin</p>
+          <textarea class="form-textarea" name="decisionNote" rows="2" placeholder="Reddediyorsanız gerekçe yazın (onay için isteğe bağlı)"></textarea>
+          <div class="rec-decision-buttons">
+            <button type="submit" name="decision" value="approve" class="primary-btn rec-approve">✓ Onayla & Kapat</button>
+            <button type="submit" name="decision" value="reject" class="secondary-btn rec-reject">✕ Reddet</button>
+          </div>
+        </form>`;
+    }
+    return `<div class="rec-actions waiting">Müşterinin aksiyon almasını bekliyor. Termin: <b>${rec.dueDate || '—'}</b>.</div>`;
+  }
+
+  return '';
 }
 
 export function getStationArea(x, y) {
@@ -398,12 +651,179 @@ export function showStationDetail(code) {
   $('#detStationType').textContent = typeNames[s.type] || s.type;
   
   renderPlacementForm(s);
+  renderDeviceBlock(site, s);
+
+  // Collapse the swap form whenever a different station is opened.
+  $('#deviceReplacementForm')?.classList.add('hidden');
 
   $('#inpBaitStatus').value = s.baitStatus || 'intact';
   $('#inpPestType').value = s.pestType || 'none';
   $('#inpPestCount').value = s.pestCount || 0;
   $('#inpStatus').value = s.checked ? s.status : 'clean';
   $('#inpNotes').value = s.notes || '';
+}
+
+// ===== Device identity & replacement (task 1-2) =====
+//
+// Roadmap §8: "34 nolu sinek cihazı değişse bile, o noktadaki cihaz yine 34
+// numara olduğu için eski cihaza ait veriler ölçüm ve kıyaslama için devam
+// etmelidir." The point number is the permanent identity; the barcode belongs
+// to the physical device and is reissued on every swap.
+//
+// Two sources feed the device log: replacements seeded into the 12-month
+// history, and any swap the user performs during the demo (stored on the
+// station so it survives a reload).
+export function pointDevices(site, station) {
+  const seeded = deviceReplacements(site.id, station.code);
+  const runtime = station.deviceLog || [];
+
+  // Generation 1 is the original install; each replacement adds one.
+  const baseGeneration = seeded.reduce((max, s) => Math.max(max, s.generation), 1);
+  const generation = baseGeneration + runtime.length;
+
+  const swaps = [
+    ...seeded.map(s => ({
+      date: s.date,
+      reasonCode: s.reasonCode,
+      reason: s.reason,
+      oldBarcode: s.oldBarcode,
+      newBarcode: s.newBarcode,
+      generation: s.generation,
+      note: s.note,
+      source: 'history'
+    })),
+    ...runtime
+  ].sort((a, b) => a.generation - b.generation);
+
+  const current = swaps.length
+    ? swaps[swaps.length - 1].newBarcode
+    : barcodeFor(site.id, station.code, 1);
+
+  return { generation, current, swaps, installedGeneration: baseGeneration };
+}
+
+export function renderDeviceBlock(site, station) {
+  const container = $('#detDeviceCurrent');
+  if (!container) return;
+
+  const { generation, current, swaps } = pointDevices(site, station);
+  const summary = pointDeviceSummary(site.id, station.code);
+
+  const genBadge = $('#detDeviceGeneration');
+  if (genBadge) genBadge.textContent = `${generation}. cihaz`;
+
+  container.innerHTML = `
+    <div class="device-id-row">
+      <span class="device-id-label">Nokta No</span>
+      <b class="device-point-no">${station.code}</b>
+      <span class="device-permanent">kalıcı</span>
+    </div>
+    <div class="device-id-row">
+      <span class="device-id-label">Barkod</span>
+      <b class="device-barcode">${current}</b>
+    </div>
+    <div class="device-id-row">
+      <span class="device-id-label">Toplam Okuma</span>
+      <b>${summary.totalReadings} ölçüm · ${summary.totalPests} adet bulgu</b>
+    </div>`;
+
+  // Prefill the swap form with the next barcode in the sequence.
+  const barcodeInput = $('#inpNewBarcode');
+  if (barcodeInput) barcodeInput.value = barcodeFor(site.id, station.code, generation + 1);
+  const hint = $('#deviceSwapHint');
+  if (hint) {
+    hint.textContent = `Nokta numarası ${station.code} değişmez. ${summary.totalReadings} geçmiş ölçüm bu noktada kalır ve karşılaştırmada kullanılmaya devam eder.`;
+  }
+
+  renderDeviceTimeline(site, station, swaps, summary);
+  renderPointHistory(site, station);
+}
+
+function renderDeviceTimeline(site, station, swaps, summary) {
+  const el = $('#detDeviceTimeline');
+  if (!el) return;
+
+  if (!swaps.length) {
+    el.innerHTML = `<p class="device-timeline-empty">Bu noktada henüz cihaz değişimi yapılmadı — ilk cihaz görevde.</p>`;
+    return;
+  }
+
+  const genRows = summary.generations.map(g =>
+    `<li class="device-gen">
+       <span class="device-gen-no">${g.generation}</span>
+       <span class="device-gen-body">
+         <b>${g.barcode}</b>
+         <small>${g.firstDate} – ${g.lastDate} · ${g.readings} ölçüm · ${g.totalPests} bulgu</small>
+       </span>
+     </li>`).join('');
+
+  const swapRows = swaps.map(s =>
+    `<li class="device-swap">
+       <span class="device-swap-icon">⇄</span>
+       <span class="device-gen-body">
+         <b>${s.date} — ${s.reason} (${s.reasonCode})</b>
+         <small>${s.oldBarcode} → ${s.newBarcode}${s.note ? ` · ${s.note}` : ''}</small>
+       </span>
+     </li>`).join('');
+
+  el.innerHTML = `
+    <p class="overline device-section-title">CİHAZ GEÇMİŞİ</p>
+    <ul class="device-gen-list">${genRows}</ul>
+    <ul class="device-swap-list">${swapRows}</ul>`;
+}
+
+// The point's reading timeline, tagged by the device that was in place. A
+// divider marks each swap, making it obvious that the readings either side
+// belong to the same point.
+function renderPointHistory(site, station) {
+  const el = $('#detPointHistory');
+  if (!el) return;
+
+  const readings = readingsForPoint(site.id, station.code);
+  if (!readings.length) {
+    el.innerHTML = `<p class="device-timeline-empty">Bu nokta için geçmiş ölçüm kaydı bulunmuyor.</p>`;
+    return;
+  }
+
+  // Show the most recent readings, but always carry a few from each earlier
+  // device too. A plain "last 10" hides the swap boundary once enough visits
+  // have happened on the new device — which is precisely the thing this panel
+  // exists to demonstrate.
+  const newest = readings[readings.length - 1].generation;
+  const perGeneration = new Map();
+  for (let i = readings.length - 1; i >= 0; i--) {
+    const r = readings[i];
+    const bucket = perGeneration.get(r.generation) || [];
+    const limit = r.generation === newest ? 8 : 3;
+    if (bucket.length < limit) {
+      bucket.push(r);
+      perGeneration.set(r.generation, bucket);
+    }
+  }
+
+  const shown = [...perGeneration.keys()]
+    .sort((a, b) => b - a)
+    .flatMap(g => perGeneration.get(g));
+
+  let lastGen = null;
+  const rows = shown.map(r => {
+    let divider = '';
+    if (lastGen !== null && r.generation !== lastGen) {
+      divider = `<li class="point-history-divider">⇄ cihaz değişimi — nokta ${station.code} aynı kaldı, ölçümler devam ediyor</li>`;
+    }
+    lastGen = r.generation;
+    const cls = r.pestCount > 0 ? 'activity' : 'clean';
+    return `${divider}
+      <li class="point-history-row">
+        <span class="ph-date">${r.date}</span>
+        <span class="ph-gen" title="${r.barcode}">${r.generation}. cihaz</span>
+        <span class="ph-count ${cls}">${r.pestCount > 0 ? `${r.pestCount} adet ${r.pestName}` : 'Aktivite yok'}</span>
+      </li>`;
+  }).join('');
+
+  el.innerHTML = `
+    <p class="overline device-section-title">NOKTA ÖLÇÜM GEÇMİŞİ <span class="ph-total">${shown.length} / ${readings.length} kayıt</span></p>
+    <ul class="point-history-list">${rows}</ul>`;
 }
 
 // Builds the placement ("yerleşim listesi") sheet for a station from its
@@ -598,18 +1018,187 @@ export function planToolbarClicks(e) {
       return true;
     }
 
-    // Toggle recommendation compliance status
-    const toggleRecBtn = e.target.closest('.toggle-rec-btn');
-    if (toggleRecBtn) {
-      const idx = parseInt(toggleRecBtn.dataset.recIndex);
+    // The old one-click "mark resolved" toggle is gone: closing a finding now
+    // requires the full loop (customer action, then technician approval),
+    // which `lifecycleClicks` and the two loop submit handlers drive.
+  return false;
+}
+
+// Real uploads are downscaled before they are stored — a phone photo would
+// otherwise put several megabytes of base64 into demo state.
+function readImageDownscaled(file, maxPx = 480) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = reject;
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = reject;
+      img.onload = () => {
+        const scale = Math.min(1, maxPx / Math.max(img.width, img.height));
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.round(img.width * scale);
+        canvas.height = Math.round(img.height * scale);
+        canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL('image/jpeg', 0.72));
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function showPhotoPreview(photo) {
+  const preview = $('#recPhotoPreview');
+  if (!preview) return;
+  preview.classList.remove('hidden');
+  preview.innerHTML = `<img src="${recPhotoSrc(photo)}" alt="önizleme"><span>Yüklenecek görsel</span>`;
+}
+
+// The app's delegator listens for click and submit only, so the photo input
+// wires its own change listener — same module-scope pattern mobile.js uses.
+document.addEventListener('change', async (e) => {
+  if (e.target.id !== 'inpRecPhoto') return;
+  const file = e.target.files && e.target.files[0];
+  if (!file) return;
+  try {
+    const dataUrl = await readImageDownscaled(file);
+    pendingCustomerPhoto = { kind: 'upload', label: 'Aksiyon sonrası', dataUrl };
+    showPhotoPreview(pendingCustomerPhoto);
+    toast('Fotoğraf yüklendi, göndermek için formu tamamlayın.');
+  } catch (err) {
+    console.warn('photo read failed', err);
+    toast('Fotoğraf okunamadı. Simüle seçeneğini kullanabilirsiniz.');
+  }
+});
+
+// Clicks for the closed-loop lifecycle features (tasks 1-2 and 1-6).
+export function lifecycleClicks(e) {
+    if (e.target.id === 'btnToggleDeviceSwap') {
+      $('#deviceReplacementForm')?.classList.toggle('hidden');
+      return true;
+    }
+    if (e.target.id === 'btnCancelDeviceSwap') {
+      $('#deviceReplacementForm')?.classList.add('hidden');
+      return true;
+    }
+
+    // Not every demo machine has a photo to hand — offer a simulated capture.
+    if (e.target.id === 'btnSimulateRecPhoto') {
+      pendingCustomerPhoto = {
+        kind: 'simulated',
+        label: 'Aksiyon sonrası',
+        ref: `${activeRecId || 'rec'}-after-${Date.now() % 1000}`
+      };
+      showPhotoPreview(pendingCustomerPhoto);
+      toast('Saha fotoğrafı simüle edildi.');
+      return true;
+    }
+
+    // Selecting a finding opens the closed-loop detail panel. Scoped to the
+    // table row and its button on purpose: the detail panel's forms also carry
+    // data-rec-id, and a looser match would swallow their submit clicks and
+    // rebuild the form out from under them.
+    const recTarget = e.target.closest('tr[data-rec-id], .rec-open-btn');
+    if (recTarget) {
       const site = state.sites.find(s => s.id === ui.activeSiteId);
-      if (site && site.recommendations && site.recommendations[idx]) {
-        const r = site.recommendations[idx];
-        r.status = r.status === 'open' ? 'resolved' : 'open';
-        save();
-        renderCompanyRecommendations(site);
-        toast(`Öneri durumu güncellendi: ${r.status === 'resolved' ? 'Giderildi' : 'Açık Bulgu'}`);
+      if (!site) return true;
+      activeRecId = recTarget.dataset.recId;
+      pendingCustomerPhoto = null;
+      renderCompanyRecommendations(site);
+      renderRecLoopDetail(site, activeRecId);
+      $('#recLoopDetail')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      return true;
+    }
+  return false;
+}
+
+// Step 2 of the loop: the customer reports the action they took, with a photo
+// of the same area.
+export function recCustomerResponseSubmit(e) {
+    if (e.target.id === 'recCustomerForm') {
+      e.preventDefault();
+      const site = state.sites.find(s => s.id === ui.activeSiteId);
+      if (!site) return true;
+
+      const recId = e.target.dataset.recId;
+      const note = (new FormData(e.target).get('customerNote') || '').trim();
+      if (!note) {
+        toast('Alınan aksiyonu kısaca açıklayın.');
+        return true;
       }
+      if (!pendingCustomerPhoto) {
+        toast('Aksiyon fotoğrafı yüklenmeli — dosya seçin veya simüle edin.');
+        return true;
+      }
+
+      const overlay = lifecycleOverlay();
+      overlay[recId] = {
+        ...(overlay[recId] || {}),
+        stage: 'customer_actioned',
+        status: 'open',
+        photoAfter: pendingCustomerPhoto,
+        customerNote: note,
+        customerRespondedDate: new Date().toLocaleDateString('tr-TR', { day: '2-digit', month: 'short', year: 'numeric' }),
+        // A fresh response clears any previous rejection.
+        rejectionNote: null
+      };
+      pendingCustomerPhoto = null;
+      save();
+
+      renderCompanyRecommendations(site);
+      renderRecLoopDetail(site, recId);
+      toast('Aksiyonunuz iletildi. Teknisyen onayı bekleniyor.');
+      return true;
+    }
+  return false;
+}
+
+// Step 3: the technician who serves the point decides whether the completed
+// action is adequate. Approval is the only thing that closes the loop.
+export function recApprovalSubmit(e) {
+    if (e.target.id === 'recApprovalForm') {
+      e.preventDefault();
+      const site = state.sites.find(s => s.id === ui.activeSiteId);
+      if (!site) return true;
+
+      const recId = e.target.dataset.recId;
+      const note = (new FormData(e.target).get('decisionNote') || '').trim();
+      // Which button submitted the form.
+      const decision = (e.submitter && e.submitter.value) || 'approve';
+      const who = state.currentUser ? state.currentUser.name : 'Teknisyen';
+      const today = new Date().toLocaleDateString('tr-TR', { day: '2-digit', month: 'short', year: 'numeric' });
+
+      const overlay = lifecycleOverlay();
+
+      if (decision === 'reject') {
+        if (!note) {
+          toast('Reddetme gerekçesi yazılmalıdır.');
+          return true;
+        }
+        overlay[recId] = {
+          ...(overlay[recId] || {}),
+          stage: 'rejected',
+          status: 'open',
+          rejectionNote: note,
+          approvedBy: null,
+          approvedDate: null
+        };
+        toast('Aksiyon reddedildi. Müşteriden tekrar aksiyon istendi.');
+      } else {
+        overlay[recId] = {
+          ...(overlay[recId] || {}),
+          stage: 'approved',
+          status: 'resolved',
+          approvedBy: who,
+          approvedDate: today,
+          rejectionNote: null
+        };
+        toast('Aksiyon onaylandı — bulgu kapatıldı.');
+      }
+
+      save();
+      renderCompanyRecommendations(site);
+      renderRecLoopDetail(site, recId);
       return true;
     }
   return false;
@@ -739,6 +1328,64 @@ export function editSiteSubmit(e) {
       showCompanyDetail(s.id);
       renderSites();
       toast('Tesis ve sözleşme detayları başarıyla güncellendi.');
+    }
+  return false;
+}
+
+// Records a device swap: the point keeps its code and its whole reading
+// history; only the barcode and generation move on.
+export function deviceReplacementSubmit(e) {
+    if (e.target.id === 'deviceReplacementForm') {
+      e.preventDefault();
+      if (!ui.activeSiteId || !ui.activeStationCode) return true;
+
+      const site = state.sites.find(s => s.id === ui.activeSiteId);
+      if (!site) return true;
+      const s = site.stations.find(st => st.code === ui.activeStationCode);
+      if (!s) return true;
+
+      const f = new FormData(e.target);
+      const reasonCode = f.get('reasonCode');
+      const newBarcode = (f.get('newBarcode') || '').trim();
+      const note = (f.get('note') || '').trim();
+      if (!newBarcode) {
+        toast('Yeni barkod girilmelidir.');
+        return true;
+      }
+
+      const before = pointDevices(site, s);
+      const readingsKept = readingsForPoint(site.id, s.code).length;
+
+      if (!s.deviceLog) s.deviceLog = [];
+      s.deviceLog.push({
+        date: new Date().toLocaleDateString('tr-TR', { day: '2-digit', month: 'short', year: 'numeric' }),
+        reasonCode,
+        reason: (replacementReasons[reasonCode] || {}).name || reasonCode,
+        oldBarcode: before.current,
+        newBarcode,
+        generation: before.generation + 1,
+        note,
+        recordedBy: state.currentUser ? state.currentUser.name : 'Operatör',
+        source: 'runtime'
+      });
+
+      // A replaced device is back in service: clear the lost/broken status so
+      // the point does not keep reporting a fault it no longer has.
+      if (s.status === 'damaged' || s.status === 'missing') {
+        s.status = 'clean';
+        s.checked = true;
+      }
+
+      recalculateSiteStats(site);
+      save();
+
+      renderDeviceBlock(site, s);
+      renderCompanyStationsTable(site);
+      renderStationMarkers(site.stations, $$('[data-station-filter].active')[0]?.dataset.stationFilter || 'all');
+      e.target.classList.add('hidden');
+
+      toast(`${s.code} noktasına yeni cihaz tanımlandı (${newBarcode}). ${readingsKept} geçmiş ölçüm korundu.`);
+      return true;
     }
   return false;
 }

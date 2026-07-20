@@ -30,11 +30,11 @@ Claim a task by putting your session name in Owner, and claim its files in
 | ID | Task | Status | Owner | Files | Notes |
 |---|---|---|---|---|---|
 | 1-1 | Per-equipment-type placement forms | **done** | Session C (`phase-1a`) | `views/companyDetail.js`, `data/catalog.js` | Schemas in `catalog.js`; legacy station types alias onto them |
-| 1-2 | Equipment replacement preserving history | todo | — | `views/companyDetail.js`, `data/history.js` | New barcode, same point number |
+| 1-2 | Equipment replacement preserving history | **done** | Session D (`phase-1b`) | `views/companyDetail.js`, `data/history.js` | Point code is the permanent identity; barcode + generation move on. `readingsForPoint()` spans devices |
 | 1-3 | Multi-pest multi-count per device | **done** | Session C (`phase-1a`) | `views/mobile.js` | Species list narrowed per device type; legacy `pestType` slugs normalised |
 | 1-4 | Chemical MSDS / label / permit attachments | **done** | Session C (`phase-1a`) | `data/catalog.js`, `views/companyDetail.js` | Surfaced in company chemicals tab, not `inventory.js` — avoids registry contention |
 | 1-5 | Dosage + water auto-calculator | **done** | Session C (`phase-1a`) | `views/mobile.js` | Structured `chemicalDosing`; basis is m² / m³ / station count per product |
-| 1-6 | Closed-loop recommendation workflow | todo | — | `views/companyDetail.js` | 3 roles: tech photo → customer photo → tech approval |
+| 1-6 | Closed-loop recommendation workflow | **done** | Session D (`phase-1b`) | `views/companyDetail.js`, `data/history.js` | `stage` field added alongside `status`; reject sends it back to the customer |
 | 1-7 | Dual digital signature on visit close | **done** | Session C (`phase-1a`) | `ui/signature.js`, `views/mobile.js` | Both signatures + customer name required to close; pads reset between jobs |
 | 1-8 | Five printable report types | todo | — | `views/reports.js`, `ui/export.js` | Currently 3 bodies reused across 6 cards |
 
@@ -159,6 +159,40 @@ A bare `window.print()` (the existing report and QR-sticker buttons) now prints
 the open modal, or the active view, without app chrome — the print stylesheet
 handles that with no JS. Use `printElement()` when you need to print one
 specific node instead.
+
+**`recommendationStats()` gained fields; the original five are unchanged (1-6).**
+`total / open / resolved / hygiene / isolation` keep their exact meaning —
+`resolved` still counts only fully closed findings. The closed-loop detail lives
+in a new `stage` field on each recommendation
+(`raised` → `customer_actioned` → `approved`, plus `rejected`), exposed as the
+additive counts `raised / awaitingApproval / approved / rejected / actioned /
+withPhotoEvidence`. The invariants worth knowing:
+`resolved === approved`, and `open === raised + awaitingApproval + rejected`
+(an item the customer has actioned is **not** closed until a technician
+approves it).
+
+**A generator bug was fixed in `history.js`, so the seeded numbers moved.**
+`readStation()` called `pick()` twice — once for `pestCode`, once for
+`pestName` — so a reading's code and species name described *different*
+species (e.g. code `ARI` labelled "Diğer Uçan"). It now draws once. This
+consumes one fewer random number per catch, which shifts the whole seeded
+stream: totals, trends and recommendation counts all differ from before the
+fix. Output is still identical run-to-run; only the pre-fix values are gone.
+
+**The technician role cannot reach the facility page.** `applyRoleAccess()`
+restricts `tech` to `work` and `mobileSim`, so the closed loop's approval step
+is performed from the `admin` role — which matches the roadmap's own wording
+("Aksiyon alınanların kaçı **Repellent tarafından** onaylandı"). If a future
+session wants the field technician approving from their own login, that is a
+nav-access change in `core/roles.js`.
+
+**`setView()` does not populate the facility page** — it only toggles which
+section is visible. `applyRoleAccess()` used to send the `client` role there
+with `setView('companyDetail')`, so customers landed on a blank screen; it now
+calls `showCompanyDetail('s1')`. This adds a `roles.js → companyDetail.js`
+import cycle (companyDetail → router → roles). ESM resolves it because the
+calls happen at runtime, not module-eval — but it is worth knowing before
+adding another edge to that cycle.
 
 **Reset demo state properly** — it lives in three places:
 ```bash

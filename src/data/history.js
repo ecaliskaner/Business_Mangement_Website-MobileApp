@@ -155,14 +155,19 @@ function readStation(station, month, pressure, r) {
   const species = pestDatabase[category === 'crawling' ? 'crawling' : category] || pestDatabase.crawling;
   const live = species.filter((s) => s.code !== '0');
 
+  // One draw for the species — picking separately for the code and the name
+  // produced readings whose code and name disagreed (e.g. code "ARI" labelled
+  // "Diğer Uçan"), which surfaces anywhere both are shown.
+  const found = count > 0 ? pick(r, live) : null;
+
   return {
     code: station.code,
     type: station.type,
     category,
     status,
     pestCount: count,
-    pestCode: count > 0 ? pick(r, live).code : '0',
-    pestName: count > 0 ? pick(r, live).name : 'Aktivite Yok'
+    pestCode: found ? found.code : '0',
+    pestName: found ? found.name : 'Aktivite Yok'
   };
 }
 
@@ -255,6 +260,9 @@ function generate() {
         const raiseChance = 0.08 + Math.min(0.42, totalPests / 60);
         if (r() < raiseChance) {
           const template = pick(r, RECOMMENDATIONS);
+          // Point the finding at a real station where possible, so the
+          // "photograph the problem area" step has somewhere to refer to.
+          const hotReading = readings.find((x) => x.pestCount > 0);
           const rec = {
             id: `RH-${String(++recSeq).padStart(4, '0')}`,
             siteId: site.id,
@@ -265,7 +273,19 @@ function generate() {
             tech,
             status: 'open',
             closedDate: null,
-            closedMonth: null
+            closedMonth: null,
+            // ---- closed-loop fields (1-6). Additive: `status` keeps its
+            // original open/resolved meaning, `stage` carries the detail.
+            stage: 'raised',
+            dueDate: formatDate(mo.year, mo.month, Math.min(28, day + 14)),
+            stationCode: hotReading ? hotReading.code : null,
+            photoBefore: null,
+            photoAfter: null,
+            customerNote: null,
+            customerRespondedDate: null,
+            approvedBy: null,
+            approvedDate: null,
+            rejectionNote: null
           };
           recommendations.push(rec);
           openRecs.push(rec);
@@ -280,6 +300,12 @@ function generate() {
             rec.status = 'resolved';
             rec.closedDate = dateStr;
             rec.closedMonth = monthIndex;
+            // A historically closed finding went the whole way round the loop:
+            // the customer acted, and the technician signed the closure off.
+            rec.stage = 'approved';
+            rec.customerRespondedDate = dateStr;
+            rec.approvedBy = tech;
+            rec.approvedDate = dateStr;
             visit.recommendationsClosed.push(rec.id);
             openRecs.splice(i, 1);
           }
@@ -290,7 +316,91 @@ function generate() {
     });
   }
 
-  return { months, visits, recommendations };
+  // ---- closed-loop stage spread (1-6) ----
+  // Every finding carries a "before" photo, because the roadmap requires the
+  // technician to photograph the problem area when raising it. Photos are held
+  // as small descriptors, not image data — the view draws them — so stored
+  // data stays light and a real upload slots into the same field shape.
+  for (const rec of recommendations) {
+    rec.photoBefore = { kind: 'simulated', label: 'Tespit anı', ref: `${rec.id}-before` };
+
+    if (rec.stage === 'approved') {
+      rec.photoAfter = { kind: 'simulated', label: 'Aksiyon sonrası', ref: `${rec.id}-after` };
+      rec.customerNote = 'Belirtilen aksiyon tamamlandı, alan temizlendi ve kontrol edildi.';
+      continue;
+    }
+
+    // Open findings are spread across the remaining stages so the demo shows
+    // every stage at once. `status` deliberately stays 'open' for all of them,
+    // which keeps the existing open/resolved counts unchanged.
+    const r = rng(`loop|${rec.id}`);
+    const roll = r();
+    if (roll < 0.34) {
+      rec.stage = 'customer_actioned';
+      rec.customerRespondedDate = rec.dueDate;
+      rec.customerNote = 'Aksiyon tarafımızca tamamlandı, onayınıza sunulmuştur.';
+      rec.photoAfter = { kind: 'simulated', label: 'Aksiyon sonrası', ref: `${rec.id}-after` };
+    } else if (roll < 0.44) {
+      rec.stage = 'rejected';
+      rec.customerRespondedDate = rec.dueDate;
+      rec.customerNote = 'Alan temizlendi.';
+      rec.photoAfter = { kind: 'simulated', label: 'Aksiyon sonrası', ref: `${rec.id}-after` };
+      rec.rejectionNote = 'Gönderilen görselde uygunsuzluk devam ediyor; tekrar aksiyon alınmalı.';
+    }
+  }
+
+  return { months, visits, recommendations, deviceReplacements: buildDeviceReplacements() };
+}
+
+// ---- equipment replacement history (1-2) ----
+//
+// Roadmap §8: when a device is lost, broken or renewed, a new barcode is
+// issued to the *same point number*, and the old device's readings must stay
+// attached to that point for measurement and comparison. So the identity that
+// history hangs off is the point code, never the barcode.
+
+const REPLACEMENT_REASONS = {
+  KA: { code: 'KA', name: 'Kayıp', en: 'Lost' },
+  KI: { code: 'KI', name: 'Kırık', en: 'Broken' },
+  Y:  { code: 'Y',  name: 'İstasyon Yenilendi', en: 'Renewed' }
+};
+
+export const replacementReasons = REPLACEMENT_REASONS;
+
+/** Deterministic barcode for a device generation at a point. */
+export function barcodeFor(siteId, code, generation = 1) {
+  const n = hash(`${siteId}|${code}|${generation}`) % 100000;
+  return `RP-${siteId.toUpperCase()}-${code}-${String(n).padStart(5, '0')}`;
+}
+
+// A couple of seeded mid-window replacements, so the "history survives the
+// swap" claim is visible on screen before anyone clicks anything.
+function buildDeviceReplacements() {
+  const months = monthWindow();
+  const out = [];
+  const seeded = [
+    { siteId: 's1', code: 'F-01', monthIndex: 5, reason: 'KI' },
+    { siteId: 's2', code: 'R-04', monthIndex: 7, reason: 'KA' }
+  ];
+  for (const s of seeded) {
+    const mo = months[s.monthIndex];
+    const r = rng(`swap|${s.siteId}|${s.code}`);
+    const day = 6 + Math.floor(r() * 16);
+    out.push({
+      siteId: s.siteId,
+      code: s.code,
+      date: formatDate(mo.year, mo.month, day),
+      monthIndex: s.monthIndex,
+      day,
+      reasonCode: s.reason,
+      reason: REPLACEMENT_REASONS[s.reason].name,
+      oldBarcode: barcodeFor(s.siteId, s.code, 1),
+      newBarcode: barcodeFor(s.siteId, s.code, 2),
+      generation: 2,
+      note: 'Saha ziyaretinde tespit edildi, aynı noktaya yeni cihaz tanımlandı.'
+    });
+  }
+  return out;
 }
 
 let cache = null;
@@ -317,14 +427,117 @@ export function monthlyPestTotals(siteId) {
   return { labels: months.map((m) => m.label), ...series };
 }
 
+export const recommendationsForSite = (siteId) =>
+  history().recommendations.filter((r) => !siteId || r.siteId === siteId);
+
+/**
+ * Recommendation counts.
+ *
+ * The first five fields are the original 0b-2 contract and keep their exact
+ * meaning — `resolved` still counts only fully closed findings. The closed-loop
+ * stage counts below are additive (1-6); note that `actioned` and `rejected`
+ * items are still `open`, because the loop has not closed on them yet.
+ */
 export function recommendationStats(siteId) {
-  const recs = history().recommendations.filter((r) => !siteId || r.siteId === siteId);
+  const recs = recommendationsForSite(siteId);
+  const atStage = (s) => recs.filter((r) => r.stage === s).length;
   return {
     total: recs.length,
     open: recs.filter((r) => r.status === 'open').length,
     resolved: recs.filter((r) => r.status === 'resolved').length,
     hygiene: recs.filter((r) => r.category === 'Hijyen').length,
-    isolation: recs.filter((r) => r.category !== 'Hijyen').length
+    isolation: recs.filter((r) => r.category !== 'Hijyen').length,
+    // closed-loop stages
+    raised: atStage('raised'),
+    awaitingApproval: atStage('customer_actioned'),
+    approved: atStage('approved'),
+    rejected: atStage('rejected'),
+    // "actioned" = customer responded at least once, whatever happened after
+    actioned: recs.filter((r) => r.customerRespondedDate).length,
+    withPhotoEvidence: recs.filter((r) => r.photoBefore && r.photoAfter).length
+  };
+}
+
+// ---- point history across device replacements (1-2) ----
+
+export const deviceReplacements = (siteId, code) =>
+  history().deviceReplacements.filter(
+    (d) => (!siteId || d.siteId === siteId) && (!code || d.code === code)
+  );
+
+/**
+ * Every reading ever taken at one point, oldest first, each tagged with the
+ * device that was installed at the time. This is the comparison the roadmap
+ * asks for: swapping the hardware must not break the point's timeline.
+ */
+export function readingsForPoint(siteId, code) {
+  const swaps = deviceReplacements(siteId, code);
+  const visits = visitsForSite(siteId);
+
+  // Walk the window in order and advance the device generation as each
+  // replacement date is passed.
+  const ordered = visits
+    .slice()
+    .sort((a, b) => a.monthIndex - b.monthIndex || a.day - b.day);
+
+  const out = [];
+  for (const v of ordered) {
+    const reading = v.readings.find((x) => x.code === code);
+    if (!reading) continue;
+
+    let generation = 1;
+    for (const s of swaps) {
+      if (v.monthIndex > s.monthIndex || (v.monthIndex === s.monthIndex && v.day >= s.day)) {
+        generation = Math.max(generation, s.generation);
+      }
+    }
+
+    out.push({
+      visitId: v.id,
+      date: v.date,
+      monthIndex: v.monthIndex,
+      day: v.day,
+      tech: v.tech,
+      visitType: v.visitType,
+      generation,
+      barcode: barcodeFor(siteId, code, generation),
+      status: reading.status,
+      pestCount: reading.pestCount,
+      pestCode: reading.pestCode,
+      pestName: reading.pestName
+    });
+  }
+  return out;
+}
+
+/** Summary of a point's life: readings and catches per device generation. */
+export function pointDeviceSummary(siteId, code) {
+  const readings = readingsForPoint(siteId, code);
+  const swaps = deviceReplacements(siteId, code);
+  const generations = new Map();
+
+  for (const rd of readings) {
+    const g = generations.get(rd.generation) || {
+      generation: rd.generation,
+      barcode: rd.barcode,
+      readings: 0,
+      totalPests: 0,
+      firstDate: rd.date,
+      lastDate: rd.date
+    };
+    g.readings += 1;
+    g.totalPests += rd.pestCount;
+    g.lastDate = rd.date;
+    generations.set(rd.generation, g);
+  }
+
+  return {
+    code,
+    siteId,
+    totalReadings: readings.length,
+    totalPests: readings.reduce((s, r) => s + r.pestCount, 0),
+    generations: [...generations.values()].sort((a, b) => a.generation - b.generation),
+    replacements: swaps
   };
 }
 
