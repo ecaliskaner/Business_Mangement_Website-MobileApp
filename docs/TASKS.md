@@ -29,13 +29,13 @@ Claim a task by putting your session name in Owner, and claim its files in
 
 | ID | Task | Status | Owner | Files | Notes |
 |---|---|---|---|---|---|
-| 1-1 | Per-equipment-type placement forms | wip | Session C | `views/companyDetail.js`, `data/catalog.js` | Fly / moth / beetle schemas differ |
+| 1-1 | Per-equipment-type placement forms | **done** | Session C (`phase-1a`) | `views/companyDetail.js`, `data/catalog.js` | Schemas in `catalog.js`; legacy station types alias onto them |
 | 1-2 | Equipment replacement preserving history | todo | — | `views/companyDetail.js`, `data/history.js` | New barcode, same point number |
-| 1-3 | Multi-pest multi-count per device | wip | Session C | `views/mobile.js` | `findings[]` partially exists |
-| 1-4 | Chemical MSDS / label / permit attachments | wip | Session C | `data/catalog.js`, `views/companyDetail.js` | Surfaced in company chemicals tab, not `inventory.js` — avoids registry contention |
-| 1-5 | Dosage + water auto-calculator | wip | Session C | `views/mobile.js` | Source data already in `chemicalDatabase` |
+| 1-3 | Multi-pest multi-count per device | **done** | Session C (`phase-1a`) | `views/mobile.js` | Species list narrowed per device type; legacy `pestType` slugs normalised |
+| 1-4 | Chemical MSDS / label / permit attachments | **done** | Session C (`phase-1a`) | `data/catalog.js`, `views/companyDetail.js` | Surfaced in company chemicals tab, not `inventory.js` — avoids registry contention |
+| 1-5 | Dosage + water auto-calculator | **done** | Session C (`phase-1a`) | `views/mobile.js` | Structured `chemicalDosing`; basis is m² / m³ / station count per product |
 | 1-6 | Closed-loop recommendation workflow | todo | — | `views/companyDetail.js` | 3 roles: tech photo → customer photo → tech approval |
-| 1-7 | Dual digital signature on visit close | wip | Session C | `ui/signature.js`, `views/mobile.js` | Pads exist, not wired |
+| 1-7 | Dual digital signature on visit close | **done** | Session C (`phase-1a`) | `ui/signature.js`, `views/mobile.js` | Both signatures + customer name required to close; pads reset between jobs |
 | 1-8 | Five printable report types | todo | — | `views/reports.js`, `ui/export.js` | Currently 3 bodies reused across 6 cards |
 
 ## Phase 2 — Customer portal
