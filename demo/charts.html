@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Grafik & Dışa Aktarma Galerisi — Phase 0c</title>
+  <link rel="stylesheet" href="../styles.css">
+  <style>
+    body { padding: 24px; background: var(--soft); }
+    .gallery { display: grid; gap: 18px; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); max-width: 1200px; margin: 0 auto; }
+    .panel { background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; }
+    .panel h2 { font-size: 13px; margin: 0 0 4px; }
+    .panel p.hint { font-size: 11px; color: var(--muted); margin: 0 0 12px; }
+    .row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+    button { font: inherit; font-size: 11px; padding: 6px 10px; border-radius: 6px; border: 1px solid var(--line); background: var(--paper); cursor: pointer; }
+    button.primary-btn { background: var(--blue); color: #fff; border-color: var(--blue); }
+    header.page { max-width: 1200px; margin: 0 auto 18px; }
+  </style>
+</head>
+<body>
+  <header class="page">
+    <p class="overline">PHASE 0C</p>
+    <h1 style="margin:2px 0 4px; font-size:22px;">Grafik &amp; dışa aktarma galerisi</h1>
+    <p style="font-size:12px; color:var(--muted); margin:0;">
+      <code>src/ui/charts.js</code> ve <code>src/ui/export.js</code> için canlı doğrulama sayfası.
+      Harici bağımlılık yok — tüm grafikler elle üretilen SVG.
+    </p>
+  </header>
+
+  <div class="gallery">
+    <article class="panel">
+      <h2>Çizgi grafik — 12 aylık aktivite</h2>
+      <p class="hint">Çok serili, alan dolgulu. Noktaların üzerine gelin.</p>
+      <div id="cLine"></div>
+      <div class="row">
+        <button data-svg="#cLine" data-name="aktivite_trendi">SVG indir</button>
+        <button data-png="#cLine" data-name="aktivite_trendi">PNG indir</button>
+      </div>
+    </article>
+
+    <article class="panel">
+      <h2>Sütun grafik — tesis bazlı bulgu</h2>
+      <p class="hint">Tek seri; çok seri verildiğinde gruplanır.</p>
+      <div id="cBar"></div>
+      <div class="row"><button data-png="#cBar" data-name="tesis_bulgulari">PNG indir</button></div>
+    </article>
+
+    <article class="panel">
+      <h2>Yığılmış sütun — tür kırılımı</h2>
+      <p class="hint">Kemirgen / uçan / yürüyen, ay bazında.</p>
+      <div id="cStack"></div>
+      <div class="row"><button data-png="#cStack" data-name="tur_kirilimi">PNG indir</button></div>
+    </article>
+
+    <article class="panel">
+      <h2>Halka grafik — istasyon durumu</h2>
+      <p class="hint">Merkezde toplam; dilim üzerine gelince yüzde.</p>
+      <div id="cDonut"></div>
+      <div class="row"><button data-svg="#cDonut" data-name="istasyon_durumu">SVG indir</button></div>
+    </article>
+
+    <article class="panel" id="exportPanel">
+      <h2>CSV dışa aktarma</h2>
+      <p class="hint">UTF-8 BOM + <code>;</code> ayracı — Türkçe Excel'de tek sütuna düşmez.</p>
+      <div id="csvPreview" style="font-family:ui-monospace,Menlo,Consolas,monospace; font-size:10px; white-space:pre; background:var(--soft); padding:10px; border-radius:6px; overflow-x:auto;"></div>
+      <div class="row"><button class="primary-btn" id="btnCsv">CSV indir</button></div>
+    </article>
+
+    <article class="panel" id="printPanel">
+      <h2>Yazdır → PDF</h2>
+      <p class="hint">Bu panel tek başına yazdırılır; sayfanın geri kalanı gizlenir.</p>
+      <table style="width:100%; font-size:11px; border-collapse:collapse;">
+        <thead><tr style="text-align:left; border-bottom:1px solid var(--line);"><th style="padding:4px;">İstasyon</th><th>Tür</th><th>Bulgu</th></tr></thead>
+        <tbody id="printRows"></tbody>
+      </table>
+      <div class="row"><button class="primary-btn" id="btnPrint">Yazdır / PDF</button></div>
+    </article>
+  </div>
+
+  <div id="toast" class="toast hidden"></div>
+
+  <script type="module">
+    import { lineChart, barChart, stackedBarChart, donutChart, mountChart } from '../src/ui/charts.js';
+    import { toCSV, downloadCSV, downloadChartSVG, downloadChartPNG, printElement } from '../src/ui/export.js';
+
+    const months = ['Oca','Şub','Mar','Nis','May','Haz','Tem','Ağu','Eyl','Eki','Kas','Ara'];
+
+    mountChart('#cLine', lineChart({
+      title: 'Toplam bulgu · son 12 ay',
+      labels: months,
+      series: [
+        { name: 'Kemirgen', values: [13,11,15,9,10,8,7,6,9,12,14,11] },
+        { name: 'Uçan haşere', values: [4,5,7,11,18,29,34,31,19,10,6,4] },
+        { name: 'Yürüyen haşere', values: [9,8,7,7,6,4,6,5,7,8,9,8] }
+      ]
+    }));
+
+    mountChart('#cBar', barChart({
+      title: 'Açık bulgu · tesis bazlı',
+      labels: ['Gebze','Çerkezköy','Ataşehir','İzmir','Bursa','Adana'],
+      series: [{ name: 'Açık bulgu', values: [18, 7, 3, 12, 5, 9] }]
+    }));
+
+    mountChart('#cStack', stackedBarChart({
+      title: 'Tür kırılımı · çeyrek bazında',
+      labels: ['Ç1','Ç2','Ç3','Ç4'],
+      series: [
+        { name: 'Kemirgen', values: [39, 27, 22, 37] },
+        { name: 'Uçan haşere', values: [16, 58, 84, 20] },
+        { name: 'Yürüyen haşere', values: [24, 17, 18, 25] }
+      ]
+    }));
+
+    mountChart('#cDonut', donutChart({
+      title: 'İstasyon durumu',
+      centerLabel: 'istasyon',
+      data: [
+        { label: 'Temiz', value: 142 },
+        { label: 'Aktivite', value: 23 },
+        { label: 'Hasarlı', value: 8 },
+        { label: 'Kayıp', value: 3 }
+      ]
+    }));
+
+    const rows = [
+      { code: 'ST-01', type: 'Kemirgen',       finding: 'Bulgu yok', reading: 0 },
+      { code: 'ST-02', type: 'Uçan haşere',    finding: '23 karasinek + 67 kambur sinek', reading: 90 },
+      { code: 'ST-03', type: 'Yürüyen haşere', finding: 'Hasarlı; yem yok', reading: 4 },
+      { code: 'ST-04', type: 'Kemirgen',       finding: 'Aktivite; =TOPLA(A1)', reading: 2 }
+    ];
+    const columns = [
+      { key: 'code', label: 'İstasyon' },
+      { key: 'type', label: 'Tür' },
+      { key: 'finding', label: 'Bulgu' },
+      { key: 'reading', label: 'Sayım', format: v => (v ?? '—') }
+    ];
+
+    document.querySelector('#csvPreview').textContent = toCSV(rows, columns);
+    document.querySelector('#printRows').innerHTML = rows.map(r =>
+      `<tr><td style="padding:4px;">${r.code}</td><td>${r.type}</td><td>${r.finding}</td></tr>`).join('');
+
+    document.querySelector('#btnCsv').onclick = () => downloadCSV('istasyon_raporu.csv', rows, columns);
+    document.querySelector('#btnPrint').onclick = () =>
+      printElement('#printPanel', { title: 'Istasyon_Raporu' });
+
+    document.addEventListener('click', e => {
+      const svgBtn = e.target.closest('[data-svg]');
+      if (svgBtn) return downloadChartSVG(svgBtn.dataset.svg, svgBtn.dataset.name);
+      const pngBtn = e.target.closest('[data-png]');
+      if (pngBtn) return downloadChartPNG(pngBtn.dataset.png, pngBtn.dataset.name);
+    });
+
+    // Surfaced to the automation harness so verification can assert on it.
+    window.__chartsReady = true;
+  </script>
+</body>
+</html>

@@ -22,8 +22,8 @@ Claim a task by putting your session name in Owner, and claim its files in
 | 0a-7 | Fix cache-first service worker | **done** | — | `service-worker.js`, `server.js` | Was serving stale modules indefinitely; now network-first. See note below |
 | 0b-1 | Seeded 12-month history generator | todo | — | `src/data/history.js` | Greenfield — parallel-safe |
 | 0b-2 | Wire history into insights + company detail | todo | — | `src/views/insights.js` | After 0b-1 |
-| 0c-1 | SVG chart lib (line/bar/stacked/donut) | todo | — | `src/ui/charts.js` | Greenfield — parallel-safe |
-| 0c-2 | CSV export + print-to-PDF stylesheet | todo | — | `src/ui/export.js`, `styles.css` | |
+| 0c-1 | SVG chart lib (line/bar/stacked/donut) | **done** | Session B | `src/ui/charts.js` | Pure builders (opts → SVG string) + `mountChart`. Gallery: `demo/charts.html` |
+| 0c-2 | CSV export + print-to-PDF stylesheet | **done** | Session B | `src/ui/export.js`, `styles.css` | CSV is `;`-delimited + BOM for TR Excel. Also SVG/PNG chart download and `printElement()` |
 
 ## Phase 1 — Repellent Stage 1
 
@@ -115,6 +115,33 @@ python scripts/checkimports.py
 It flags any module referencing an exported symbol it never imports. Two known
 false positives are expected (a comment in `core/session.js`, object keys named
 `state:` in `data/seed.js`) — anything beyond those is real.
+
+**Charts and export are available (0c).** Tasks 0b-2, 1-8, 2-2 consume these.
+
+```js
+import { lineChart, barChart, stackedBarChart, donutChart, mountChart } from '../ui/charts.js';
+import { downloadCSV, downloadChartPNG, printElement } from '../ui/export.js';
+
+mountChart('#trendChart', lineChart({
+  labels: ['Oca','Şub','Mar'],
+  series: [{ name: 'Kemirgen', values: [13,11,15] }]   // bare arrays also work
+}));
+downloadCSV('istasyonlar.csv', rows, [{ key:'code', label:'İstasyon' }]);
+printElement('#reportBody', { title: 'Servis_Raporu' });  // browser "Save as PDF"
+```
+
+The chart builders are pure — options in, SVG markup string out — so the same
+call serves the screen, the print layout and the PNG/SVG download. Sizing is
+`viewBox`-driven; do **not** set a pixel width, `.ct-svg` handles responsiveness.
+
+`demo/charts.html` is a live gallery of all four types plus both export paths.
+It's a verification harness, not part of the app — delete it freely if it ever
+gets in the way.
+
+A bare `window.print()` (the existing report and QR-sticker buttons) now prints
+the open modal, or the active view, without app chrome — the print stylesheet
+handles that with no JS. Use `printElement()` when you need to print one
+specific node instead.
 
 **Reset demo state properly** — it lives in three places:
 ```bash

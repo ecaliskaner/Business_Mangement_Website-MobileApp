@@ -82,7 +82,7 @@ Update this table when you claim or release files.
 | Core / bootstrap | `src/core/**`, `src/app.js` | — | free |
 | Catalog data | `src/data/catalog.js` | — | free |
 | Seed + history | `src/data/seed.js`, `src/data/history.js` | — | free |
-| Charts / export | `src/ui/charts.js`, `src/ui/export.js` | — | free |
+| Charts / export | `src/ui/charts.js`, `src/ui/export.js` | — | free (0c landed; API stable — see `demo/charts.html`) |
 | Modal / calendar / signature | `src/ui/modal.js`, `calendar.js`, `signature.js` | — | free |
 | Dashboard | `src/views/dashboard.js` | — | free |
 | Sites | `src/views/sites.js` | — | free |

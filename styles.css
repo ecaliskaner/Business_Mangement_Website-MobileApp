@@ -1201,3 +1201,175 @@
     min-height: auto;
   }
 }
+
+/* ============================================
+   Phase 0c: SVG charts + print-to-PDF
+   Appended by the charts/export session — see docs/SESSIONS.md.
+   ============================================ */
+
+.ct-chart {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.ct-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ink);
+}
+/* The SVG carries a viewBox, so height follows width and the chart stays
+   readable from a laptop down to a phone without a resize listener. */
+.ct-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  overflow: visible;
+}
+.ct-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  font-size: 10px;
+  color: var(--muted);
+}
+.ct-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+.ct-legend-item i {
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
+  flex: none;
+}
+
+/* Hover feedback pairs with the <title> tooltip baked into each mark. */
+.ct-bar,
+.ct-slice {
+  transition: opacity .12s ease;
+}
+.ct-chart:hover .ct-bar,
+.ct-chart:hover .ct-slice {
+  opacity: .55;
+}
+.ct-bar:hover,
+.ct-slice:hover {
+  opacity: 1;
+}
+.ct-dot {
+  transition: r .12s ease;
+}
+.ct-dot:hover {
+  r: 5.5;
+}
+
+@media (max-width: 760px) {
+  .ct-legend { font-size: 9px; }
+}
+
+/* ---------- print-to-PDF ----------
+   Two modes:
+   1. printElement() marks one node .ct-print-root and prints only that.
+   2. A bare window.print() (the existing report/QR buttons) falls back to
+      printing the open modal, or the active view, without the app chrome. */
+
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 14mm 12mm;
+  }
+
+  html, body {
+    background: #fff !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  /* Never waste a page on navigation, toasts or buttons. */
+  .sidebar,
+  .topbar,
+  .nav,
+  .sidebar-footer,
+  #toast,
+  .modal-close,
+  .primary-btn,
+  .secondary-btn,
+  .filter-btn,
+  .no-print {
+    display: none !important;
+  }
+
+  .app,
+  main,
+  .view {
+    display: block !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    max-width: none !important;
+    box-shadow: none !important;
+    overflow: visible !important;
+  }
+
+  .panel,
+  .metric-card,
+  .modal-card {
+    box-shadow: none !important;
+    border: 1px solid #ddd !important;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  /* An open modal is the document the user asked for — print it full width,
+     not as a floating card over a dimmed page. */
+  .modal:not(.hidden) {
+    position: static !important;
+    display: block !important;
+    background: none !important;
+    padding: 0 !important;
+  }
+  .modal.hidden { display: none !important; }
+  .modal:not(.hidden) .modal-card {
+    position: static !important;
+    max-height: none !important;
+    max-width: none !important;
+    width: 100% !important;
+    overflow: visible !important;
+    border: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* Scroll containers must open up or they print one clipped screenful. */
+  .table-wrap,
+  .panel,
+  [style*="overflow"] {
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  table { width: 100% !important; border-collapse: collapse; }
+  thead { display: table-header-group; }  /* repeat headers across pages */
+  tr, img, svg { break-inside: avoid; page-break-inside: avoid; }
+  h1, h2, h3 { break-after: avoid; page-break-after: avoid; }
+
+  a[href]::after { content: ""; }  /* suppress UA "(url)" annotations */
+
+  /* Mode 1: printElement() — hide everything, then bring back the target and
+     its descendants. visibility (not display) keeps the layout intact. */
+  body.ct-printing * { visibility: hidden !important; }
+  body.ct-printing .ct-print-root,
+  body.ct-printing .ct-print-root * { visibility: visible !important; }
+  body.ct-printing .ct-print-root {
+    position: absolute !important;
+    left: 0;
+    top: 0;
+    width: 100% !important;
+    margin: 0 !important;
+  }
+
+  .ct-svg { max-width: 100% !important; }
+}
+
