@@ -5,10 +5,10 @@ import { $, $$, toast } from '../core/dom.js';
 import { state } from '../core/state.js';
 import { ui } from '../core/session.js';
 import { chemicalDatabase } from '../data/catalog.js';
-import { initSignaturePads } from '../ui/signature.js';
+import { bothSigned, getSignature, initSignaturePads, isSigned, resetSignaturePads, setSignatureChangeHandler } from '../ui/signature.js';
 import { render } from '../core/router.js';
 import { recalculateSiteStats, save } from '../core/state.js';
-import { pestDatabase, visitTypes } from '../data/catalog.js';
+import { calculateDosage, getChemicalDocuments, normalizePestCode, pestNameByCode, pestsForEquipment, visitTypes } from '../data/catalog.js';
 import { deductStock, renderInventory } from '../views/inventory.js';
 
 export function renderMobileRoute() {
@@ -39,7 +39,17 @@ export function renderMobileRoute() {
   }).join('');
 }
 
+// Signatures belong to one visit only — opening a different job must not
+// inherit the previous customer's ink.
+let signedJobId = null;
+
 export function showMobileJobDetail(work) {
+  if (signedJobId !== work.id) {
+    resetSignaturePads();
+    const nameInput = $('#inpSigCustomerName');
+    if (nameInput) nameInput.value = work.customerSignerName || '';
+    signedJobId = work.id;
+  }
   ui.mobJob = work;
   ui.mobArrived = work.status === 'arrived_gps' || work.status === 'started_by_first_qr' || work.completed;
   ui.mobQrStarted = work.status === 'started_by_first_qr' || work.completed;
@@ -118,8 +128,9 @@ export function showMobileJobDetail(work) {
   if (cardChem) {
     cardChem.classList.toggle('disabled', !ui.mobQrStarted);
   }
+  populateChemicalSelect();
   renderMobChemicalsList(site);
-  
+
   const checked = site.stations.filter(s => s.checked).length;
   const isComplete = ui.mobQrStarted && checked === site.stations.length;
   const cardSig = $('#cardSignature');
@@ -129,15 +140,63 @@ export function showMobileJobDetail(work) {
   
   renderMobileMiniGrid(site);
   updateSimStepsHighlight();
-  
+
   // Initialize signature canvases if unlocked
   if (isComplete && !work.completed) {
     initSignaturePads();
   }
-  
+  updateSignatureGate();
+
   $('#pageMobileRoute').classList.add('hidden');
   $('#pageMobileJobDetail').classList.remove('hidden');
 }
+
+// Reflects signature state into the card and gates the save button. Roadmap
+// §10 requires both a customer and a technician signature before a visit can
+// be closed, so "all stations checked" alone is no longer enough.
+export function updateSignatureGate() {
+  const stateCust = $('#sigStateCustomer');
+  const stateTech = $('#sigStateTech');
+  const gate = $('#sigGateNotice');
+  const saveBtn = $('#btnMobSaveForm');
+  if (!gate || !saveBtn) return;
+
+  const custOk = isSigned('#sigCanvasCustomer');
+  const techOk = isSigned('#sigCanvasTech');
+
+  if (stateCust) {
+    stateCust.textContent = custOk ? '✓ İmzalandı' : 'Bekliyor';
+    stateCust.classList.toggle('signed', custOk);
+  }
+  if (stateTech) {
+    stateTech.textContent = techOk ? '✓ İmzalandı' : 'Bekliyor';
+    stateTech.classList.toggle('signed', techOk);
+  }
+
+  const job = ui.mobJob;
+  const site = job ? state.sites.find(s => s.id === job.siteId) : null;
+  const stationsDone = site ? site.stations.every(s => s.checked) : false;
+  const ready = ui.mobQrStarted && stationsDone && bothSigned();
+
+  if (job && job.completed) {
+    gate.className = 'sig-gate ready';
+    gate.textContent = '✓ İş emri imzalanarak kapatıldı.';
+  } else if (!stationsDone) {
+    gate.className = 'sig-gate pending';
+    gate.textContent = 'Önce tüm istasyonların kontrolü tamamlanmalı.';
+  } else if (ready) {
+    gate.className = 'sig-gate ready';
+    gate.textContent = '✓ Her iki imza da alındı — form kapatılabilir.';
+  } else {
+    gate.className = 'sig-gate pending';
+    const missing = [!custOk && 'müşteri', !techOk && 'teknisyen'].filter(Boolean).join(' ve ');
+    gate.textContent = `${missing.charAt(0).toUpperCase()}${missing.slice(1)} imzası bekleniyor.`;
+  }
+
+  saveBtn.disabled = !ready || (job && job.completed);
+}
+
+setSignatureChangeHandler(updateSignatureGate);
 
 export function updateSimStepsHighlight() {
   $$('.sim-steps-list li').forEach(x => x.classList.remove('active-step'));
@@ -182,9 +241,9 @@ export function renderMobileMiniGrid(site) {
       initSignaturePads();
     }
   }
-  
-  // Enable complete form button when all stations checked
-  $('#btnMobSaveForm').disabled = !isComplete || ui.mobJob.completed;
+
+  // The save button is gated on signatures, not just station coverage.
+  updateSignatureGate();
 }
 
 export function showMobileMap() {
@@ -217,23 +276,83 @@ export function showMobileMap() {
   addTelemetryLog("Kat planı mobil ekranda yüklendi.");
 }
 
+// Working copy of the findings rows for the station currently open in the
+// inspection form. Held here rather than on the station so an abandoned edit
+// leaves the saved record untouched.
+let draftFindings = [];
+let draftStationType = 'rodent';
+
 export function showMobileInspect(stationCode) {
   ui.activeMobileStationCode = stationCode;
   const site = state.sites.find(s => s.id === ui.mobJob.siteId) || state.sites[0];
   const s = site.stations.find(st => st.code === stationCode);
   if (!s) return;
-  
+
   $('#mobInspectTitle').textContent = `${s.code} Kontrolü`;
-  
+
   $('#mobInpBaitStatus').value = s.baitStatus || 'intact';
-  $('#mobInpPestType').value = s.pestType || 'none';
-  $('#mobInpPestCount').value = s.pestCount || 0;
   $('#mobInpStatus').value = s.checked ? s.status : 'clean';
   $('#mobInpNotes').value = s.notes || '';
-  
+
+  // Seed the editor from whatever the station already holds: the newer
+  // findings[] if present, otherwise the legacy single pestType/pestCount pair.
+  draftStationType = s.type;
+  if (s.findings && s.findings.length) {
+    draftFindings = s.findings.map(f => ({ pestCode: normalizePestCode(f.pestCode), count: f.count }));
+  } else if (s.pestType && s.pestType !== 'none' && s.pestCount > 0) {
+    draftFindings = [{ pestCode: normalizePestCode(s.pestType), count: s.pestCount }];
+  } else {
+    draftFindings = [];
+  }
+  renderFindingsEditor();
+
   $('#pageMobileMap').classList.add('hidden');
   $('#pageMobileJobDetail').classList.add('hidden');
   $('#pageMobileInspect').classList.remove('hidden');
+}
+
+// Renders one row per observed species. The species list is narrowed to what
+// the device can actually catch — roadmap §7 keeps a separate sheet per family.
+export function renderFindingsEditor() {
+  const list = $('#mobFindingsList');
+  if (!list) return;
+
+  const options = pestsForEquipment(draftStationType);
+
+  list.innerHTML = draftFindings.map((f, i) => {
+    const opts = ['<option value="">— Zararlı Seçin —</option>']
+      .concat(options.map(p => {
+        const sci = p.sci ? ` · ${p.sci}` : '';
+        return `<option value="${p.code}"${(p.code === f.pestCode) ? ' selected' : ''}>${p.name}${sci}</option>`;
+      }))
+      .join('');
+    return `
+      <div class="finding-row" data-finding-index="${i}">
+        <select class="form-select finding-select">${opts}</select>
+        <input type="number" class="form-input finding-count" min="1" value="${f.count || 1}" aria-label="Adet">
+        <button type="button" class="finding-remove" data-remove-finding="${i}" title="Satırı sil">×</button>
+      </div>`;
+  }).join('') || '<div class="findings-empty">Aktivite yok — zararlı gözlenmediyse boş bırakın.</div>';
+
+  const total = $('#mobFindingsTotal');
+  if (total) {
+    const rows = draftFindings.filter(f => f.pestCode && f.count > 0);
+    const sum = rows.reduce((a, f) => a + Number(f.count || 0), 0);
+    total.textContent = rows.length
+      ? `Toplam: ${rows.length} tür · ${sum} adet`
+      : '';
+  }
+}
+
+// The rows are plain DOM until something forces a re-render, so pull their
+// current values back into the draft before adding, removing or saving.
+function syncFindingsFromDom() {
+  const rows = $$('#mobFindingsList .finding-row');
+  if (!rows.length) return;
+  draftFindings = rows.map(row => ({
+    pestCode: row.querySelector('.finding-select').value,
+    count: parseInt(row.querySelector('.finding-count').value) || 0
+  }));
 }
 
 export function openMobileScanner(title, instructions, stations, onScanComplete) {
@@ -339,6 +458,115 @@ export function updatePhoneTime() {
 setInterval(updatePhoneTime, 10000);
 updatePhoneTime();
 
+// ===== Chemical picker: options, documents, dosage calculator =====
+
+// Fills the chemical <select> from the catalog, grouped by category, so adding
+// a product to chemicalDatabase is enough to make it selectable in the field.
+export function populateChemicalSelect() {
+  const select = $('#mobChemSelect');
+  if (!select || select.dataset.populated === 'true') return;
+
+  const byCategory = {};
+  chemicalDatabase.forEach(c => {
+    (byCategory[c.category] = byCategory[c.category] || []).push(c);
+  });
+
+  select.innerHTML = '<option value="">-- Kimyasal Seçin --</option>' +
+    Object.entries(byCategory).map(([cat, list]) => `
+      <optgroup label="${cat}">
+        ${list.map(c => `<option value="${c.id}">${c.name} (${c.activeIngredient})</option>`).join('')}
+      </optgroup>`).join('');
+
+  select.dataset.populated = 'true';
+}
+
+// Roadmap §9: the usage report is only valid if the product's MSDS, label and
+// ministry permit are on file — so show them at the point of selection.
+export function renderChemicalDocs(chemicalId) {
+  const container = $('#mobChemDocs');
+  if (!container) return;
+
+  const docs = getChemicalDocuments(chemicalId);
+  if (!chemicalId || !docs.length) {
+    container.innerHTML = '';
+    return;
+  }
+
+  const chem = chemicalDatabase.find(c => c.id === chemicalId);
+  container.innerHTML = `
+    <div class="chem-doc-card" style="padding:8px;">
+      <h4>${chem ? chem.name : 'Kimyasal'}</h4>
+      <p class="chem-doc-sub">${chem ? `${chem.activeIngredient} · ${chem.concentration}` : ''}</p>
+      ${docs.map(d => `
+        <div class="chem-doc-row">
+          <span>${d.icon}</span>
+          <span>
+            <b>${d.label}</b>
+            <span class="chem-doc-meta">${d.ref} · ${d.size}</span>
+          </span>
+          <button type="button" class="text-btn chem-doc-btn" data-chem-doc="${chemicalId}:${d.kind}">Görüntüle ↗</button>
+        </div>`).join('')}
+    </div>`;
+}
+
+// Live dosage / water panel. Recomputed whenever the product or the treated
+// amount changes.
+export function updateDosePanel() {
+  const panel = $('#mobDosePanel');
+  const select = $('#mobChemSelect');
+  const areaInput = $('#mobChemArea');
+  const areaLabel = $('#mobChemAreaLabel');
+  if (!panel || !select || !areaInput) return;
+
+  const chemicalId = select.value;
+  const result = calculateDosage(chemicalId, areaInput.value);
+
+  // The measured quantity means different things per product family — m² for
+  // residual sprays, m³ for ULV, station count for baits.
+  if (areaLabel) {
+    const basisLabels = { area: 'UYGULAMA ALANI (m²)', volume: 'UYGULAMA HACMİ (m³)', device: 'İSTASYON ADEDİ' };
+    const preview = calculateDosage(chemicalId, 1);
+    areaLabel.textContent = preview ? basisLabels[preview.basis] : 'UYGULAMA ALANI (m²)';
+  }
+
+  if (!result) {
+    panel.classList.add('hidden');
+    panel.innerHTML = '';
+    return;
+  }
+
+  const waterCells = result.neat ? '' : `
+    <div class="dose-cell"><span>Gerekli Su</span><strong>${result.waterLitres} lt</strong></div>
+    <div class="dose-cell"><span>Tank Dolumu</span><strong>${result.tankLoads} × ${result.tankLitres} lt</strong></div>`;
+
+  const note = result.neat
+    ? result.neatNote
+    : `Karışım oranı: ${result.mixText}. Her ${result.tankLitres} lt'lik tanka ${result.perTankProduct} ${result.productUnit} ürün eklenir.`;
+
+  panel.innerHTML = `
+    <div class="dose-head">⚗ OTOMATİK DOZAJ HESABI</div>
+    <div class="dose-grid">
+      <div class="dose-cell"><span>Gerekli Ürün</span><strong>${result.productAmount} ${result.productUnit}</strong></div>
+      <div class="dose-cell"><span>Etiket Dozu</span><strong>${result.doseText}</strong></div>
+      ${waterCells}
+    </div>
+    <div class="dose-note">${note} Tahmini maliyet: <b>₺${result.estimatedCost}</b>.</div>`;
+  panel.classList.remove('hidden');
+}
+
+// The app's delegator only listens for click and submit, so the picker wires
+// its own change/input listeners here — same module-scope pattern the phone
+// clock above already uses.
+document.addEventListener('change', e => {
+  if (e.target.id === 'mobChemSelect') {
+    renderChemicalDocs(e.target.value);
+    updateDosePanel();
+  }
+});
+document.addEventListener('input', e => {
+  if (e.target.id === 'mobChemArea') updateDosePanel();
+});
+
 export function renderMobChemicalsList(site) {
   const container = $('#mobChemicalList');
   if (!container) return;
@@ -353,7 +581,7 @@ export function renderMobChemicalsList(site) {
       <div style="background:var(--soft); border:1px solid var(--line); border-radius:6px; padding:8px; display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
         <div>
           <b>${chemName}</b><br>
-          <small class="text-muted">Miktar: ${cu.quantity} · Alan: ${cu.area}</small>
+          <small class="text-muted">${cu.quantity} · ${cu.area}${cu.waterLitres ? ` · ${cu.waterLitres} lt su` : ''}</small>
         </div>
         ${ui.mobJob.completed ? '' : `<button type="button" class="text-btn delete-mob-chem-btn" data-chem-index="${index}" style="color:var(--red); font-size:16px; font-weight:700; border:none; background:none; cursor:pointer;">×</button>`}
       </div>
@@ -509,67 +737,96 @@ export function mobileClicks(e) {
       showMobileMap();
     }
     
+    if (e.target.id === 'btnAddFinding') {
+      syncFindingsFromDom();
+      draftFindings.push({ pestCode: '', count: 1 });
+      renderFindingsEditor();
+      return true;
+    }
+
+    const removeFinding = e.target.closest('[data-remove-finding]');
+    if (removeFinding) {
+      syncFindingsFromDom();
+      draftFindings.splice(parseInt(removeFinding.dataset.removeFinding), 1);
+      renderFindingsEditor();
+      return true;
+    }
+
     if (e.target.id === 'btnMobSaveInspection') {
       const site = state.sites.find(s => s.id === ui.mobJob.siteId) || state.sites[0];
       const s = site.stations.find(st => st.code === ui.activeMobileStationCode);
       if (s) {
+        syncFindingsFromDom();
+
+        // Keep only rows the technician actually filled in. An empty list is a
+        // legitimate result — it means "Aktivite Yok".
+        const findings = draftFindings
+          .filter(f => f.pestCode && f.count > 0)
+          .map(f => ({
+            pestCode: f.pestCode,
+            pestName: pestNameByCode[f.pestCode] || f.pestCode,
+            count: Number(f.count)
+          }));
+
         s.checked = true;
         s.baitStatus = $('#mobInpBaitStatus').value;
-        s.pestType = $('#mobInpPestType').value;
-        s.pestCount = parseInt($('#mobInpPestCount').value) || 0;
         s.status = $('#mobInpStatus').value;
         s.notes = $('#mobInpNotes').value;
-        
-        const localPestLabels = { none: 'Yok', mouse: 'Fare', rat: 'Sıçan', cockroach: 'Hamamböceği', fly: 'Sinek', other: 'Diğer' };
-        Object.values(pestDatabase).forEach(category => {
-          category.forEach(p => {
-            localPestLabels[p.code] = p.name;
-          });
-        });
-        
-        if (s.pestType !== 'none' && s.pestCount > 0) {
-          const pestName = localPestLabels[s.pestType] || s.pestType;
-          s.findings = [{
-            pestCode: s.pestType,
-            pestName: pestName,
-            count: s.pestCount
-          }];
-        } else {
-          s.findings = [];
-        }
-        
+        s.findings = findings;
+
+        // Mirror the multi-finding result back onto the legacy single-pest
+        // fields, which the heat map, stats and older report bodies still read.
+        s.pestType = findings.length ? findings[0].pestCode : 'none';
+        s.pestCount = findings.reduce((a, f) => a + f.count, 0);
+
         s.controlledBy = ui.mobJob.tech;
         s.lastControl = "Bugün, " + new Date().toLocaleTimeString('tr-TR', {hour: '2-digit', minute:'2-digit'});
-        
-        if (s.pestType !== 'none') {
+
+        if (findings.length) {
           s.status = 'activity';
         } else if (s.status === 'activity') {
           s.status = 'clean';
         }
-        
+
         recalculateSiteStats(site);
         save();
-        
-        addTelemetryLog(`İSTASYON DENETLENDİ: ${s.code} (Durum: ${s.status === 'clean' ? 'Temiz' : (s.status === 'activity' ? 'Aktivite' : 'Hasarlı')})`);
+
+        const detail = findings.length
+          ? findings.map(f => `${f.count} adet ${f.pestName}`).join(', ')
+          : 'aktivite yok';
+        addTelemetryLog(`İSTASYON DENETLENDİ: ${s.code} — ${detail}`);
         toast(`${s.code} kontrolü kaydedildi.`);
-        
+
         $('#pageMobileInspect').classList.add('hidden');
         showMobileJobDetail(ui.mobJob);
       }
     }
     
     if (e.target.id === 'btnMobSaveForm') {
+      // Defence in depth: the button is already disabled without both
+      // signatures, but never close a visit on an unsigned pad.
+      if (!bothSigned()) {
+        toast('İş emri kapatılamaz: müşteri ve teknisyen imzası zorunludur.');
+        return true;
+      }
+
+      const signerName = ($('#inpSigCustomerName')?.value || '').trim();
+      if (!signerName) {
+        toast('Müşteri ad soyad bilgisi girilmelidir.');
+        $('#inpSigCustomerName')?.focus();
+        return true;
+      }
+
       ui.mobJob.completed = true;
       ui.mobJob.status = 'completed';
       state.completed++;
-      
-      const canvasCust = $('#sigCanvasCustomer');
-      const canvasTech = $('#sigCanvasTech');
-      if (canvasCust && canvasTech) {
-        ui.mobJob.customerSignature = canvasCust.toDataURL();
-        ui.mobJob.techSignature = canvasTech.toDataURL();
-      }
-      
+
+      ui.mobJob.customerSignature = getSignature('#sigCanvasCustomer');
+      ui.mobJob.techSignature = getSignature('#sigCanvasTech');
+      ui.mobJob.customerSignerName = signerName;
+      ui.mobJob.techSignerName = ui.mobJob.tech;
+      ui.mobJob.signedAt = new Date().toLocaleString('tr-TR', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+
       const site = state.sites.find(s => s.id === ui.mobJob.siteId) || state.sites[0];
       site.last = `Bugün · ${ui.mobJob.tech}`;
       
@@ -636,6 +893,22 @@ export function mobileClicks(e) {
   return false;
 }
 
+// Opening a chemical document. No real files ship with the demo, so this
+// reports what would be served rather than pretending to render a PDF.
+export function chemicalDocClicks(e) {
+    const docBtn = e.target.closest('[data-chem-doc]');
+    if (docBtn) {
+      const [chemicalId, kind] = docBtn.dataset.chemDoc.split(':');
+      const chem = chemicalDatabase.find(c => c.id === chemicalId);
+      const doc = getChemicalDocuments(chemicalId).find(d => d.kind === kind);
+      if (doc && chem) {
+        toast(`${chem.name} — ${doc.label} açılıyor (${doc.ref}, ${doc.size}).`);
+      }
+      return true;
+    }
+  return false;
+}
+
 export function mobileChemDeleteClicks(e) {
     const deleteMobChemBtn = e.target.closest('.delete-mob-chem-btn');
     if (deleteMobChemBtn) {
@@ -682,44 +955,52 @@ export function mobChemicalSubmit(e) {
       if (!site) return true;
       
       const inpChemSelect = $('#mobChemSelect');
-      const inpChemQty = $('#mobChemQty');
       const inpChemArea = $('#mobChemArea');
       const inpChemNotes = $('#mobChemNotes');
-      if (!inpChemSelect || !inpChemQty || !inpChemArea || !inpChemNotes) return true;
-      
+      if (!inpChemSelect || !inpChemArea || !inpChemNotes) return true;
+
       const chemicalId = inpChemSelect.value;
-      const quantity = inpChemQty.value.trim();
-      const area = inpChemArea.value.trim();
       const notes = inpChemNotes.value.trim();
-      
-      if (!chemicalId || !quantity || !area) return true;
-      
+
+      // Quantity is no longer typed by hand — it is whatever the calculator
+      // derived from the treated amount, so the record and the label dose can
+      // never disagree.
+      const dose = calculateDosage(chemicalId, inpChemArea.value);
+      if (!dose) {
+        toast('Kimyasal ve uygulama miktarı girilmelidir.');
+        return true;
+      }
+
       const dateStr = new Date().toLocaleDateString('tr-TR', { day: '2-digit', month: 'short', year: 'numeric' });
       const newChemUse = {
         id: `cu${Date.now()}`,
         workOrderId: ui.mobJob.id,
         chemicalId: chemicalId,
         date: dateStr,
-        quantity: quantity,
-        area: area,
+        quantity: dose.quantityText,
+        area: `${dose.measured} ${dose.basisUnit}`,
+        waterLitres: dose.waterLitres,
+        dosageText: dose.doseText,
         tech: ui.mobJob.tech,
         notes: notes || 'Saha uygulaması'
       };
-      
+
       if (!site.chemicalsUsed) site.chemicalsUsed = [];
       site.chemicalsUsed.unshift(newChemUse);
-      
+
       // Auto-deduct stock
-      deductStock(chemicalId, quantity);
-      
+      deductStock(chemicalId, dose.quantityText);
+
       save();
       renderMobChemicalsList(site);
-      
+
       inpChemSelect.value = '';
-      inpChemQty.value = '';
       inpChemArea.value = '';
       inpChemNotes.value = '';
-      toast('Kimyasal başarıyla eklendi.');
+      renderChemicalDocs('');
+      updateDosePanel();
+      addTelemetryLog(`KİMYASAL UYGULANDI: ${dose.chemicalName} — ${dose.quantityText}${dose.neat ? '' : ` + ${dose.waterLitres} lt su`} / ${dose.measured} ${dose.basisUnit}`);
+      toast(`${dose.chemicalName} eklendi: ${dose.quantityText}${dose.neat ? '' : ` + ${dose.waterLitres} lt su`}.`);
     }
   return false;
 }

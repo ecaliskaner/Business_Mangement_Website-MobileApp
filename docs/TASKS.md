@@ -20,22 +20,22 @@ Claim a task by putting your session name in Owner, and claim its files in
 | 0a-5 | Decompose `bind()` into per-view handlers | **done** | — | `src/views/**`, `src/app.js` | 33 handlers into owning modules; app.js 1,327 → 277 lines. Parallel work now unblocked |
 | 0a-6 | Gitignore `state.js`; vendor `html5-qrcode` | **done** | — | `.gitignore`, `vendor/` | html5-qrcode 2.3.8 vendored (367 KB). Zero external requests remain |
 | 0a-7 | Fix cache-first service worker | **done** | — | `service-worker.js`, `server.js` | Was serving stale modules indefinitely; now network-first. See note below |
-| 0b-1 | Seeded 12-month history generator | todo | — | `src/data/history.js` | Greenfield — parallel-safe |
-| 0b-2 | Wire history into insights + company detail | todo | — | `src/views/insights.js` | After 0b-1 |
-| 0c-1 | SVG chart lib (line/bar/stacked/donut) | todo | — | `src/ui/charts.js` | Greenfield — parallel-safe |
-| 0c-2 | CSV export + print-to-PDF stylesheet | todo | — | `src/ui/export.js`, `styles.css` | |
+| 0b-1 | Seeded 12-month history generator | **done** | Session A (`phase-0b`) | `src/data/history.js` | 6 sites × 12 months (Ağu 2025 – Tem 2026). Seeded PRNG, identical every run |
+| 0b-2 | Wire history into insights + company detail | **done** | Session A (`phase-0b`) | `src/views/insights.js` | Trend chart, risk ranking, per-site 6-month chart, recommendation + chemical stats |
+| 0c-1 | SVG chart lib (line/bar/stacked/donut) | **done** | Session B | `src/ui/charts.js` | Pure builders (opts → SVG string) + `mountChart`. Gallery: `demo/charts.html` |
+| 0c-2 | CSV export + print-to-PDF stylesheet | **done** | Session B | `src/ui/export.js`, `styles.css` | CSV is `;`-delimited + BOM for TR Excel. Also SVG/PNG chart download and `printElement()` |
 
 ## Phase 1 — Repellent Stage 1
 
 | ID | Task | Status | Owner | Files | Notes |
 |---|---|---|---|---|---|
-| 1-1 | Per-equipment-type placement forms | todo | — | `views/companyDetail.js`, `data/catalog.js` | Fly / moth / beetle schemas differ |
+| 1-1 | Per-equipment-type placement forms | wip | Session C | `views/companyDetail.js`, `data/catalog.js` | Fly / moth / beetle schemas differ |
 | 1-2 | Equipment replacement preserving history | todo | — | `views/companyDetail.js`, `data/history.js` | New barcode, same point number |
-| 1-3 | Multi-pest multi-count per device | todo | — | `views/mobile.js` | `findings[]` partially exists |
-| 1-4 | Chemical MSDS / label / permit attachments | todo | — | `data/catalog.js`, `views/inventory.js` | |
-| 1-5 | Dosage + water auto-calculator | todo | — | `views/mobile.js` | Source data already in `chemicalDatabase` |
+| 1-3 | Multi-pest multi-count per device | wip | Session C | `views/mobile.js` | `findings[]` partially exists |
+| 1-4 | Chemical MSDS / label / permit attachments | wip | Session C | `data/catalog.js`, `views/companyDetail.js` | Surfaced in company chemicals tab, not `inventory.js` — avoids registry contention |
+| 1-5 | Dosage + water auto-calculator | wip | Session C | `views/mobile.js` | Source data already in `chemicalDatabase` |
 | 1-6 | Closed-loop recommendation workflow | todo | — | `views/companyDetail.js` | 3 roles: tech photo → customer photo → tech approval |
-| 1-7 | Dual digital signature on visit close | todo | — | `ui/signature.js`, `views/mobile.js` | Pads exist, not wired |
+| 1-7 | Dual digital signature on visit close | wip | Session C | `ui/signature.js`, `views/mobile.js` | Pads exist, not wired |
 | 1-8 | Five printable report types | todo | — | `views/reports.js`, `ui/export.js` | Currently 3 bodies reused across 6 cards |
 
 ## Phase 2 — Customer portal
@@ -115,6 +115,33 @@ python scripts/checkimports.py
 It flags any module referencing an exported symbol it never imports. Two known
 false positives are expected (a comment in `core/session.js`, object keys named
 `state:` in `data/seed.js`) — anything beyond those is real.
+
+**Charts and export are available (0c).** Tasks 0b-2, 1-8, 2-2 consume these.
+
+```js
+import { lineChart, barChart, stackedBarChart, donutChart, mountChart } from '../ui/charts.js';
+import { downloadCSV, downloadChartPNG, printElement } from '../ui/export.js';
+
+mountChart('#trendChart', lineChart({
+  labels: ['Oca','Şub','Mar'],
+  series: [{ name: 'Kemirgen', values: [13,11,15] }]   // bare arrays also work
+}));
+downloadCSV('istasyonlar.csv', rows, [{ key:'code', label:'İstasyon' }]);
+printElement('#reportBody', { title: 'Servis_Raporu' });  // browser "Save as PDF"
+```
+
+The chart builders are pure — options in, SVG markup string out — so the same
+call serves the screen, the print layout and the PNG/SVG download. Sizing is
+`viewBox`-driven; do **not** set a pixel width, `.ct-svg` handles responsiveness.
+
+`demo/charts.html` is a live gallery of all four types plus both export paths.
+It's a verification harness, not part of the app — delete it freely if it ever
+gets in the way.
+
+A bare `window.print()` (the existing report and QR-sticker buttons) now prints
+the open modal, or the active view, without app chrome — the print stylesheet
+handles that with no JS. Use `printElement()` when you need to print one
+specific node instead.
 
 **Reset demo state properly** — it lives in three places:
 ```bash

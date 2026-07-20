@@ -551,9 +551,24 @@
                       </div>
                       <p class="overline">İSTASYON TÜRÜ</p>
                       <b id="detStationType">Kemirgen Yem İstasyonu</b>
-                      
+
                       <hr class="divider" style="margin:10px 0;">
-                      
+
+                      <!-- Placement sheet: fields are generated from the
+                           equipment type's schema in data/catalog.js -->
+                      <div class="placement-block">
+                        <div class="placement-block-head">
+                          <p class="overline" style="margin:0;">YERLEŞİM KAYDI</p>
+                          <span class="status-chip secondary" id="detPlacementSchemaName">—</span>
+                        </div>
+                        <form id="stationPlacementForm">
+                          <div class="placement-fields" id="stationPlacementFields"></div>
+                          <button type="submit" class="secondary-btn placement-save-btn">Yerleşim Bilgilerini Kaydet</button>
+                        </form>
+                      </div>
+
+                      <hr class="divider" style="margin:10px 0;">
+
                       <form id="adminInspectionForm">
                         <label class="form-label">
                           Yem Tüketim Durumu
@@ -848,6 +863,22 @@
                     <button type="submit" class="primary-btn" style="height:37px; padding:0 20px;">💊 Kaydet</button>
                   </form>
                 </article>
+
+                <!-- Roadmap §9: the automatic usage report depends on every
+                     product carrying its MSDS, label sample and permit. -->
+                <article class="panel" style="margin-top:16px;">
+                  <div class="panel-header" style="margin-bottom:6px;">
+                    <div>
+                      <p class="overline">KİMYASAL BELGE KÜTÜPHANESİ</p>
+                      <h2>MSDS · Etiket Örneği · Bakanlık İzinleri</h2>
+                    </div>
+                    <span class="status-chip healthy" id="compChemDocsCount">0 ürün</span>
+                  </div>
+                  <p class="text-muted" style="font-size:12px; margin-bottom:16px;">Kullanılan her biyosidal ürün için güvenlik bilgi formu, onaylı etiket örneği ve T.C. Sağlık Bakanlığı ruhsatı sistemde tutulur. Bu kayıtlar Repellent yöneticileri tarafından güncellenebilir.</p>
+                  <div class="chem-doc-grid" id="compChemDocsGrid">
+                    <!-- Dynamically populated -->
+                  </div>
+                </article>
               </div>
 
               <!-- TAB Pane 7: Client Analytics -->
@@ -1055,26 +1086,24 @@
                           <!-- Already added chemicals list -->
                         </div>
 
+                        <!-- Options are generated from chemicalDatabase; the
+                             technician enters only the treated amount and the
+                             dosage / water volume is calculated for them. -->
                         <form id="mobChemicalForm" style="display:grid; gap:8px;">
                           <select required id="mobChemSelect" class="form-select" style="height:32px; padding:0 6px; font-size:11px;">
                             <option value="">-- Kimyasal Seçin --</option>
-                            <option value="ch1">K-Othrine SC 25</option>
-                            <option value="ch2">Goliath Gel</option>
-                            <option value="ch3">Racumin Paste</option>
-                            <option value="ch4">Storm Secure</option>
-                            <option value="ch5">Aqua K-Othrine EW 20</option>
-                            <option value="ch6">Icon 10 CS</option>
-                            <option value="ch7">Maxforce White IC</option>
-                            <option value="ch8">Cislin 2.5 UL</option>
-                            <option value="ch9">Steri-Fab</option>
-                            <option value="ch10">Actellic 50 EC</option>
-                            <option value="ch11">Demand CS</option>
-                            <option value="ch12">Responsar SC</option>
                           </select>
-                          <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px;">
-                            <input required type="text" id="mobChemQty" placeholder="Miktar (Örn: 250 ml)" class="form-input" style="height:32px; font-size:11px;">
-                            <input required type="text" id="mobChemArea" placeholder="Alan (Örn: 500 m²)" class="form-input" style="height:32px; font-size:11px;">
-                          </div>
+
+                          <!-- MSDS / label / ministry permit for the selection -->
+                          <div id="mobChemDocs"></div>
+
+                          <label style="font-size:10px; font-weight:700; color:var(--muted); display:grid; gap:4px;">
+                            <span id="mobChemAreaLabel">UYGULAMA ALANI (m²)</span>
+                            <input required type="number" min="0" step="any" id="mobChemArea" placeholder="Örn: 250" class="form-input" style="height:32px; font-size:11px;">
+                          </label>
+
+                          <div class="dose-panel hidden" id="mobDosePanel"></div>
+
                           <input type="text" id="mobChemNotes" placeholder="Uygulama Notu (Opsiyonel)" class="form-input" style="height:32px; font-size:11px;">
                           <button type="submit" class="secondary-btn" style="height:32px; padding:0; justify-content:center;">＋ Kimyasal Ekle</button>
                         </form>
@@ -1084,20 +1113,32 @@
                       <div class="mob-action-card disabled" id="cardSignature">
                         <div class="mob-card-desc" style="margin-bottom:10px;">
                           <b>5. Dijital İmza</b>
-                          <p>Servis sonunda müşteri ve teknisyen imzası alınır.</p>
+                          <p>Roadmap §10: ziyaret sonunda müşteriden ad ve imza, teknisyenden imza dijital olarak alınır. Her iki imza olmadan form kapatılamaz.</p>
                         </div>
+
+                        <label style="font-size:10px; font-weight:700; color:var(--muted); display:block; margin-bottom:4px;">MÜŞTERİ AD SOYAD / ÜNVAN</label>
+                        <input type="text" id="inpSigCustomerName" class="form-input sig-name-input" placeholder="Örn: Mehmet Yılmaz — Kalite Sorumlusu">
+
                         <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
-                          <div>
-                            <label style="font-size:10px; font-weight:700; color:var(--muted); margin-bottom:4px; display:block;">MÜŞTERİ İMZASI</label>
+                          <div class="sig-slot">
+                            <div class="sig-slot-head">
+                              <label>MÜŞTERİ İMZASI</label>
+                              <span class="sig-state" id="sigStateCustomer">Bekliyor</span>
+                            </div>
                             <canvas id="sigCanvasCustomer" width="200" height="80" style="width:100%; height:80px; border:1px dashed var(--line); border-radius:6px; background:#fafafa; touch-action:none; cursor:crosshair;"></canvas>
                             <button type="button" class="text-btn" id="btnClearSigCustomer" style="font-size:9px; margin-top:2px;">Temizle</button>
                           </div>
-                          <div>
-                            <label style="font-size:10px; font-weight:700; color:var(--muted); margin-bottom:4px; display:block;">TEKNİSYEN İMZASI</label>
+                          <div class="sig-slot">
+                            <div class="sig-slot-head">
+                              <label>TEKNİSYEN İMZASI</label>
+                              <span class="sig-state" id="sigStateTech">Bekliyor</span>
+                            </div>
                             <canvas id="sigCanvasTech" width="200" height="80" style="width:100%; height:80px; border:1px dashed var(--line); border-radius:6px; background:#fafafa; touch-action:none; cursor:crosshair;"></canvas>
                             <button type="button" class="text-btn" id="btnClearSigTech" style="font-size:9px; margin-top:2px;">Temizle</button>
                           </div>
                         </div>
+
+                        <div class="sig-gate pending" id="sigGateNotice">İki imza da alınmadan iş emri kapatılamaz.</div>
                       </div>
                     </div>
                     <!-- Footer action bar -->
@@ -1145,51 +1186,15 @@
                           </select>
                         </label>
 
-                        <label class="form-label">
-                          Haşere Aktivitesi
-                          <select name="pestType" id="mobInpPestType" class="form-select">
-                            <optgroup label="Aktivite">
-                              <option value="none">Aktivite Yok</option>
-                            </optgroup>
-                            <optgroup label="Kemirgen">
-                              <option value="mouse">Fare (Mouse)</option>
-                              <option value="rat">Sıçan (Rat)</option>
-                            </optgroup>
-                            <optgroup label="Yürüyen Haşere">
-                              <option value="german_cockroach">Alman Hamamböceği</option>
-                              <option value="oriental_cockroach">Doğu Hamamböceği</option>
-                              <option value="american_cockroach">Amerikan Hamamböceği</option>
-                              <option value="cockroach">Hamamböceği (Genel)</option>
-                              <option value="ground_beetle">Kınkanatlı</option>
-                              <option value="other_crawling">Diğer Yürüyen</option>
-                            </optgroup>
-                            <optgroup label="Uçan Haşere">
-                              <option value="house_fly">Karasinek</option>
-                              <option value="mosquito">Sivrisinek</option>
-                              <option value="fruit_fly">Meyve Sineği</option>
-                              <option value="humpback_fly">Kambur Sineği</option>
-                              <option value="small_flies">Küçük Sinek</option>
-                              <option value="wasp">Arı</option>
-                              <option value="fly">Sinek (Genel)</option>
-                            </optgroup>
-                            <optgroup label="Depo Zararlıları">
-                              <option value="indian_meal_moth">Kuru Meyve Güvesi</option>
-                              <option value="flour_moth">Değirmen Güvesi</option>
-                              <option value="grain_moth">Arpa Güvesi</option>
-                              <option value="flour_beetle">Un / Kırma Biti</option>
-                              <option value="grain_weevil">Buğday/Pirinç Biti</option>
-                              <option value="cigarette_beetle">Tatlı Kurt</option>
-                            </optgroup>
-                            <optgroup label="Diğer">
-                              <option value="other">Diğer Haşere</option>
-                            </optgroup>
-                          </select>
-                        </label>
-
-                        <label class="form-label">
-                          Bulgu Adedi
-                          <input type="number" name="pestCount" id="mobInpPestCount" min="0" value="0" class="form-input">
-                        </label>
+                        <!-- Multi-pest, multi-count entry. Species options are
+                             generated from the device's equipment type, so a
+                             fly unit offers the flying-insect sheet only. -->
+                        <div class="form-label">
+                          Gözlenen Zararlılar & Adetleri
+                          <div class="findings-list" id="mobFindingsList"></div>
+                          <button type="button" class="secondary-btn btn-add-finding" id="btnAddFinding">＋ Zararlı Türü Ekle</button>
+                          <div class="findings-total" id="mobFindingsTotal"></div>
+                        </div>
 
                         <label class="form-label">
                           Fiziksel Cihaz Durumu

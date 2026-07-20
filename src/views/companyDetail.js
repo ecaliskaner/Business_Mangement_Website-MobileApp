@@ -4,7 +4,7 @@
 import { $, $$ } from '../core/dom.js';
 import { recalculateSiteStats, state } from '../core/state.js';
 import { ui } from '../core/session.js';
-import { chemicalDatabase, equipmentStatusCodes, equipmentTypes, pestDatabase, stateLabel } from '../data/catalog.js';
+import { chemicalDatabase, equipmentStatusCodes, equipmentTypes, getChemicalDocuments, getPlacementSchema, pestDatabase, stateLabel } from '../data/catalog.js';
 import { setView } from '../core/router.js';
 import { renderClientAnalytics } from '../views/insights.js';
 import { toast } from '../core/dom.js';
@@ -109,6 +109,7 @@ export function showCompanyDetail(siteId) {
 
   // Render chemical usage tab
   renderChemicalUsage(site);
+  renderChemicalDocLibrary(site);
   
   // Render service scope in overview
   renderServiceScope(site);
@@ -241,6 +242,16 @@ export function getStationArea(x, y) {
   return "Dış Çevre / Genel";
 }
 
+// One-line digest of the type-specific placement fields, for the tracking
+// table. Returns '' when nothing type-specific has been recorded yet.
+export function placementSummary(station) {
+  const p = station.placement;
+  if (!p) return '';
+  const parts = [p.unitPower, p.tubeLength, p.uvTubeType, p.trapType, p.pheromonePeriod && `Feromon: ${p.pheromonePeriod}`]
+    .filter(Boolean);
+  return parts.join(' · ');
+}
+
 export function renderCompanyStationsTable(site) {
   const container = $('#compStationsTableBody');
   if (!container) return;
@@ -278,8 +289,10 @@ export function renderCompanyStationsTable(site) {
     const planted = s.plantedDate || "15.01.2025";
     const lastCheck = s.checked ? (s.lastControl || "12 Tem 2026") : "—";
     const inspector = s.checked ? (s.controlledBy || "Ayşe Demir") : "—";
-    const area = getStationArea(s.x, s.y);
+    const placement = s.placement || {};
+    const area = placement.areaName || getStationArea(s.x, s.y);
     const typeLabel = typeLabels[s.type] || s.type;
+    const specs = placementSummary(s);
     const statusText = statusLabels[s.status] || s.status;
     
     let statusClass = 'warning';
@@ -309,7 +322,7 @@ export function renderCompanyStationsTable(site) {
     return `
       <tr onclick="showStationDetail('${s.code}'); switchCompanyTab('map');" style="cursor:pointer;">
         <td><strong>${s.code}</strong></td>
-        <td>${typeLabel}</td>
+        <td>${typeLabel}${specs ? `<br><small class="text-muted">${specs}</small>` : ''}</td>
         <td><span style="color:#55616b; font-size:11px; font-weight:600;">📍 ${area}</span></td>
         <td><small class="text-muted">${planted}</small></td>
         <td><small>${lastCheck}</small></td>
@@ -384,11 +397,49 @@ export function showStationDetail(code) {
   const typeNames = { rodent: 'Kemirgen Yem İstasyonu', crawler: 'Yürüyen Haşere Monitörü', flying: 'Uçan Haşere Cihazı', insect_light_trap: 'UV Işıklı Cihaz (ILT)' };
   $('#detStationType').textContent = typeNames[s.type] || s.type;
   
+  renderPlacementForm(s);
+
   $('#inpBaitStatus').value = s.baitStatus || 'intact';
   $('#inpPestType').value = s.pestType || 'none';
   $('#inpPestCount').value = s.pestCount || 0;
   $('#inpStatus').value = s.checked ? s.status : 'clean';
   $('#inpNotes').value = s.notes || '';
+}
+
+// Builds the placement ("yerleşim listesi") sheet for a station from its
+// equipment type's schema, so a fly unit asks for tube length and UV type while
+// a moth trap asks for trap type and pheromone period. Values already recorded
+// on the station are pre-filled.
+export function renderPlacementForm(station) {
+  const container = $('#stationPlacementFields');
+  if (!container) return;
+
+  const schema = getPlacementSchema(station.type);
+  const saved = station.placement || {};
+
+  const schemaBadge = $('#detPlacementSchemaName');
+  if (schemaBadge) schemaBadge.textContent = schema.title;
+
+  container.innerHTML = schema.fields.map(f => {
+    // Point number defaults to the code's numeric suffix — the roadmap keeps
+    // that number stable even when the physical device is replaced.
+    let value = saved[f.key] ?? '';
+    if (!value && f.key === 'pointNo') value = (station.code.match(/\d+/) || [''])[0];
+    if (!value && f.key === 'areaName') value = getStationArea(station.x, station.y);
+
+    const label = `<span class="placement-label">${f.label}<small>${f.en}</small></span>`;
+
+    if (f.type === 'select') {
+      const opts = ['<option value="">— Seçiniz —</option>']
+        .concat(f.options.map(o => `<option value="${o}"${o === value ? ' selected' : ''}>${o}</option>`))
+        .join('');
+      return `<label class="placement-field">${label}<select name="${f.key}" class="form-select">${opts}</select></label>`;
+    }
+
+    const type = f.type === 'date' ? 'date' : 'text';
+    const ph = f.placeholder ? ` placeholder="${f.placeholder}"` : '';
+    return `<label class="placement-field">${label}<input type="${type}" name="${f.key}" value="${value}" class="form-input"${ph}></label>`;
+  }).join('');
 }
 
 // Mobile App Workflow
@@ -420,6 +471,39 @@ export function renderChemicalUsage(site) {
       </tr>
     `;
   }).join('') || '<tr><td colspan="7" class="empty" style="text-align:center;">Henüz kimyasal kullanım kaydı bulunmuyor.</td></tr>';
+}
+
+// Document library for every product in the catalog. Products actually used at
+// this facility are flagged, so an auditor can see the paperwork behind each
+// application record in the table above.
+export function renderChemicalDocLibrary(site) {
+  const grid = $('#compChemDocsGrid');
+  if (!grid) return;
+
+  const usedIds = new Set((site.chemicalsUsed || []).map(cu => cu.chemicalId));
+
+  grid.innerHTML = chemicalDatabase.map(chem => {
+    const docs = getChemicalDocuments(chem.id);
+    const used = usedIds.has(chem.id);
+    return `
+      <div class="chem-doc-card">
+        <h4>${chem.name} ${used ? '<span class="status-chip healthy" style="font-size:8px; font-weight:700;">BU TESİSTE KULLANILDI</span>' : ''}</h4>
+        <p class="chem-doc-sub">${chem.activeIngredient} · ${chem.concentration} · ${chem.category}</p>
+        ${docs.length ? docs.map(d => `
+          <div class="chem-doc-row">
+            <span>${d.icon}</span>
+            <span>
+              <b>${d.label}</b>
+              <span class="chem-doc-meta">${d.ref} · ${d.size} · ${d.date}</span>
+            </span>
+            <button type="button" class="text-btn chem-doc-btn" data-chem-doc="${chem.id}:${d.kind}">Görüntüle ↗</button>
+          </div>`).join('')
+        : '<div class="chem-doc-row"><span class="chem-doc-missing">⚠ Belge eksik — kullanım raporu üretilemez.</span></div>'}
+      </div>`;
+  }).join('');
+
+  const count = $('#compChemDocsCount');
+  if (count) count.textContent = `${chemicalDatabase.length} ürün · ${chemicalDatabase.length * 3} belge`;
 }
 
 export function renderServiceScope(site) {
@@ -655,6 +739,34 @@ export function editSiteSubmit(e) {
       showCompanyDetail(s.id);
       renderSites();
       toast('Tesis ve sözleşme detayları başarıyla güncellendi.');
+    }
+  return false;
+}
+
+export function placementSubmit(e) {
+    if (e.target.id === 'stationPlacementForm') {
+      e.preventDefault();
+      if (!ui.activeSiteId || !ui.activeStationCode) return true;
+
+      const site = state.sites.find(s => s.id === ui.activeSiteId);
+      if (!site) return true;
+      const s = site.stations.find(st => st.code === ui.activeStationCode);
+      if (!s) return true;
+
+      const schema = getPlacementSchema(s.type);
+      const f = new FormData(e.target);
+
+      s.placement = {};
+      schema.fields.forEach(field => {
+        s.placement[field.key] = (f.get(field.key) || '').trim();
+      });
+      s.placement.recordedBy = state.currentUser ? state.currentUser.name : 'Operatör';
+      s.placement.recordedAt = new Date().toLocaleDateString('tr-TR', { day: '2-digit', month: 'short', year: 'numeric' });
+
+      save();
+      renderCompanyStationsTable(site);
+      toast(`${s.code} yerleşim kaydı güncellendi (${schema.title}).`);
+      return true;
     }
   return false;
 }

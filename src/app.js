@@ -22,11 +22,11 @@ import { teamRosterClicks } from './views/team.js';
 import {
   siteCardClicks, backNavClicks, planToolbarClicks, planCanvasClicks,
   companyTabClicks, fileDownloadClicks, editSiteSubmit, adminInspectionSubmit,
-  fileUploadSubmit, recommendationSubmit, chemicalUsageSubmit,
+  fileUploadSubmit, recommendationSubmit, chemicalUsageSubmit, placementSubmit,
   showStationDetail, switchCompanyTab, showCompanyDetail
 } from './views/companyDetail.js';
 import { reportCardClicks, generateReportSubmit } from './views/reports.js';
-import { mobileClicks, mobileChemDeleteClicks, mobChemicalSubmit } from './views/mobile.js';
+import { mobileClicks, mobileChemDeleteClicks, mobChemicalSubmit, chemicalDocClicks } from './views/mobile.js';
 import { insightsClicks } from './views/insights.js';
 import { invoiceActionClicks, invoiceFilterClicks } from './views/finance.js';
 import { stockRefillSubmit } from './views/inventory.js';
@@ -230,6 +230,7 @@ const CLICK_CHAIN = [
   companyTabClicks,
   insightsClicks,
   invoiceActionClicks,
+  chemicalDocClicks,
   mobileChemDeleteClicks,
   taskChemDeleteClicks,
   invoiceFilterClicks,
@@ -242,6 +243,7 @@ const SUBMIT_CHAIN = [
   editSiteSubmit,
   createSiteSubmit,
   generateReportSubmit,
+  placementSubmit,
   adminInspectionSubmit,
   fileUploadSubmit,
   recommendationSubmit,

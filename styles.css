@@ -1201,3 +1201,266 @@
     min-height: auto;
   }
 }
+
+/* ===== Phase 1: placement forms, multi-pest findings, dosage, chem docs, signatures ===== */
+
+/* --- 1-1 Per-equipment-type placement sheet (station detail sidebar) --- */
+.placement-block-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.placement-block-head .status-chip {
+  font-size: 9px;
+  font-weight: 700;
+  margin-left: auto;
+}
+.placement-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.placement-field {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 11px;
+  font-weight: 600;
+  min-width: 0;
+}
+/* Free-text notes and the area name read better across the full width. */
+.placement-field:has(input[name="areaName"]),
+.placement-field:has(input[name="other"]) {
+  grid-column: 1 / -1;
+}
+.placement-label {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
+  color: var(--ink, #09090b);
+}
+.placement-label small {
+  font-size: 9px;
+  font-weight: 500;
+  color: var(--muted, #78828d);
+}
+.placement-fields .form-input,
+.placement-fields .form-select {
+  height: 28px;
+  padding: 0 6px;
+  font-size: 11px;
+  width: 100%;
+  min-width: 0;
+}
+.placement-save-btn {
+  height: 30px;
+  padding: 0 10px;
+  font-size: 10px;
+  font-weight: 700;
+  width: 100%;
+  justify-content: center;
+  margin-top: 10px;
+}
+
+/* --- 1-3 Multi-pest, multi-count findings --- */
+.findings-list {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+.finding-row {
+  display: grid;
+  grid-template-columns: 1fr 62px 26px;
+  gap: 6px;
+  align-items: center;
+}
+.finding-row .form-select,
+.finding-row .form-input {
+  height: 30px;
+  padding: 0 6px;
+  font-size: 11px;
+  min-width: 0;
+}
+.finding-remove {
+  height: 30px;
+  border: 1px solid var(--line, #e4e4e7);
+  border-radius: 6px;
+  background: var(--soft, #fafafa);
+  color: var(--red, #d7443e);
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+}
+.finding-remove:hover { background: #fdecec; }
+.btn-add-finding {
+  height: 30px;
+  width: 100%;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 0;
+}
+.findings-empty {
+  font-size: 10px;
+  color: var(--muted, #78828d);
+  background: var(--soft, #fafafa);
+  border: 1px dashed var(--line, #e4e4e7);
+  border-radius: 6px;
+  padding: 8px;
+  text-align: center;
+}
+.findings-total {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--muted, #78828d);
+  margin-top: 4px;
+}
+
+/* --- 1-5 Dosage & water calculator --- */
+.dose-panel {
+  border: 1px solid var(--blue, #2563eb);
+  border-radius: 6px;
+  background: #f0f6ff;
+  padding: 8px;
+  font-size: 10px;
+}
+.dose-panel.hidden { display: none; }
+.dose-head {
+  font-size: 10px;
+  font-weight: 800;
+  color: var(--blue, #2563eb);
+  margin-bottom: 6px;
+  letter-spacing: .02em;
+}
+.dose-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+.dose-cell {
+  background: #fff;
+  border: 1px solid #d8e4fb;
+  border-radius: 5px;
+  padding: 5px 6px;
+  min-width: 0;
+}
+.dose-cell span {
+  display: block;
+  font-size: 8.5px;
+  font-weight: 700;
+  color: var(--muted, #78828d);
+  text-transform: uppercase;
+  letter-spacing: .03em;
+}
+.dose-cell strong {
+  display: block;
+  font-size: 13px;
+  color: var(--ink, #09090b);
+  line-height: 1.3;
+}
+.dose-note {
+  margin-top: 6px;
+  font-size: 9.5px;
+  color: #44546a;
+  line-height: 1.4;
+}
+
+/* --- 1-4 Chemical document library --- */
+.chem-doc-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 10px;
+}
+.chem-doc-card {
+  border: 1px solid var(--line, #e4e4e7);
+  border-radius: 8px;
+  padding: 10px;
+  background: #fff;
+}
+.chem-doc-card h4 {
+  margin: 0 0 2px;
+  font-size: 12px;
+}
+.chem-doc-card .chem-doc-sub {
+  font-size: 10px;
+  color: var(--muted, #78828d);
+  margin: 0 0 8px;
+}
+.chem-doc-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 0;
+  border-top: 1px dashed var(--line, #e4e4e7);
+  font-size: 10.5px;
+}
+.chem-doc-row b { font-weight: 700; }
+.chem-doc-row .chem-doc-meta {
+  color: var(--muted, #78828d);
+  font-size: 9px;
+  display: block;
+}
+.chem-doc-row .chem-doc-btn {
+  margin-left: auto;
+  font-size: 10px;
+  padding: 0;
+  white-space: nowrap;
+}
+.chem-doc-missing {
+  font-size: 10px;
+  color: var(--red, #d7443e);
+  font-weight: 700;
+}
+
+/* --- 1-7 Dual digital signature --- */
+.sig-slot { min-width: 0; }
+.sig-slot-head {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 4px;
+}
+.sig-slot-head label {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--muted, #78828d);
+}
+.sig-state {
+  margin-left: auto;
+  font-size: 9px;
+  font-weight: 800;
+  color: var(--muted, #78828d);
+}
+.sig-state.signed { color: var(--green, #15956a); }
+canvas.signed {
+  border-style: solid !important;
+  border-color: var(--green, #15956a) !important;
+  background: #f4fbf8 !important;
+}
+.sig-name-input {
+  height: 30px;
+  font-size: 11px;
+  width: 100%;
+  margin-bottom: 8px;
+}
+.sig-gate {
+  margin-top: 8px;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 6px 8px;
+  border-radius: 6px;
+  text-align: center;
+}
+.sig-gate.pending {
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  color: #9a5b13;
+}
+.sig-gate.ready {
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  color: #15803d;
+}
