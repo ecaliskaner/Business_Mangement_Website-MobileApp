@@ -36,7 +36,7 @@ Claim a task by putting your session name in Owner, and claim its files in
 | 1-5 | Dosage + water auto-calculator | **done** | Session C (`phase-1a`) | `views/mobile.js` | Structured `chemicalDosing`; basis is m² / m³ / station count per product |
 | 1-6 | Closed-loop recommendation workflow | **done** | Session D (`phase-1b`) | `views/companyDetail.js`, `data/history.js` | `stage` field added alongside `status`; reject sends it back to the customer |
 | 1-7 | Dual digital signature on visit close | **done** | Session C (`phase-1a`) | `ui/signature.js`, `views/mobile.js` | Both signatures + customer name required to close; pads reset between jobs |
-| 1-8 | Five printable report types | todo | — | `views/reports.js`, `ui/export.js` | Currently 3 bodies reused across 6 cards |
+| 1-8 | Five printable report types | **done** | Session E | `views/reports.js`, `views/reportBodies.js` | Visit / trend / comparison / non-conformity / audit package. Pure builders on real history |
 
 ## Phase 2 — Customer portal
 
@@ -45,7 +45,7 @@ Claim a task by putting your session name in Owner, and claim its files in
 | 2-1 | Multi-location / city / region comparison | todo | — | `views/insights.js` | Needs 0b-1 |
 | 2-2 | Multi-select chart filters + per-chart download | todo | — | `views/insights.js`, `ui/charts.js` | |
 | 2-3 | Recommendation statistics | todo | — | `views/insights.js` | raised / actioned / approved; hygiene vs isolation |
-| 2-4 | 3rd Eye audit section | todo | — | `views/reports.js` | |
+| 2-4 | 3rd Eye audit section | **done** | Session E | `views/reports.js` | Visit type `3G` was already in the catalog — reads real audits plus per-site coverage |
 | 2-5 | Technician credential cards | todo | — | `views/team.js` | **Placeholder docs + KVKK notice only** |
 
 ## Phase 3 — Field realism
@@ -72,7 +72,7 @@ Claim a task by putting your session name in Owner, and claim its files in
 
 | ID | Task | Status | Owner | Files | Notes |
 |---|---|---|---|---|---|
-| 5-1 | Compliance badges | todo | — | `views/reports.js` | BRCGS/SALSA/ISO22000/FSSC22000/RedTractor/AIB |
+| 5-1 | Compliance badges | **done** | Session E | `data/compliance.js`, `views/reports.js` | Readiness computed from history, not decorative. Red Tractor is honestly out of scope |
 | 5-2 | One-click demo reset | todo | — | `src/app.js` | |
 | 5-3 | Guided tour mode | todo | — | `src/app.js` | Walks the pitch narrative |
 | 5-4 | Fast role switching | todo | — | `core/auth.js` | No re-login during demo |
@@ -112,10 +112,30 @@ paths you actually click; `bind()` has many branches it will not reach. Run:
 python scripts/checkimports.py
 ```
 
-It flags any module referencing an exported symbol it never imports. Four known
-false positives are expected (a comment in `core/session.js`, object keys named
-`state:` in `data/seed.js`, comment mentions of `save` in `data/catalog.js` and
-`state` in `ui/signature.js`) — anything beyond those is real.
+It flags any module referencing an exported symbol it never imports. The
+pattern also matches comments and strings, so the false-positive list grows as
+the codebase does — ten as of Phase 1c:
+
+| File | Symbol | Why it is spurious |
+|---|---|---|
+| `core/session.js` | `applyRoleAccess` | comment |
+| `data/seed.js` | `state` | object keys named `state:` |
+| `data/catalog.js` | `save` | comment |
+| `ui/signature.js` | `state` | comment |
+| `views/reportBodies.js` | `ui`, `state`, `modal` | all three in one header comment |
+| `views/reports.js` | `render`, `modal`, `state` | comment, the `'#modal'` selector string, and the `te-cov-state` class name |
+
+Anything beyond these is real — but confirm before believing it. Print the hit
+in context rather than trusting the count:
+
+```python
+import io, re
+body = re.sub(r'^import .*$', '', io.open(F, encoding='utf8').read(), flags=re.M)
+for m in re.finditer(r'(?<![\w$.])' + SYM + r'', body):
+    print(body[:m.start()].count('
+') + 1, body.splitlines()[body[:m.start()].count('
+')])
+```
 
 **Run `git status` after you commit — it must come back clean.** Session A
 wired `insights.js` to `#trendCaption` but the matching one-line `index.html`
@@ -193,6 +213,29 @@ calls `showCompanyDetail('s1')`. This adds a `roles.js → companyDetail.js`
 import cycle (companyDetail → router → roles). ESM resolves it because the
 calls happen at runtime, not module-eval — but it is worth knowing before
 adding another edge to that cycle.
+**The report suite is available (1-8 / 2-4 / 5-1).**
+
+`views/reportBodies.js` exports five pure builders — `visitReport(visit)`,
+`trendReport(siteId)`, `comparisonReport()`, `nonConformityReport(siteId?)` and
+`auditPackage(standardId, siteId?)` — each returning an HTML string, the same
+contract as `ui/charts.js`. `views/reports.js` owns only the registry, the
+modal shell and the handlers; add a report by adding one entry to `REPORTS`
+with `scope`, `build`, `filename` and `csv`, and the toolbar chips, CSV export
+and print button all wire themselves.
+
+`data/compliance.js` scores audit readiness from the visit history. Checks are
+graded `major`/`minor` the way the standards themselves grade findings: one
+major failure fails the site. Thresholds in `STANDARDS[].requires` and
+`ACTIVITY_LIMIT` are calibrated against the seeded data — if the history
+generator's seed ever changes, re-check them or every badge turns the same
+colour and the strip stops telling a story.
+
+**Reports still owed by the `.docx` (not built here).** `docs/PLAN.md` phase 1
+item 7 lists a different five — service, placement-list activity, pesticide
+usage, activity-only, recommendation. Visit ≈ service and non-conformity ≈
+recommendation, and pesticide usage is partly covered inside the visit report
+and the audit package's chemical log. **Placement-list activity** and a
+standalone **activity-only** report have no equivalent yet.
 
 **Reset demo state properly** — it lives in three places:
 ```bash

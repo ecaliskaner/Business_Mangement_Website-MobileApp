@@ -83,6 +83,9 @@ Update this table when you claim or release files.
 | Catalog data | `src/data/catalog.js` | Session C | released — 1-1/1-3/1-4/1-5/1-7 landed on `phase-1a` |
 | Seed + history | `src/data/seed.js`, `src/data/history.js` | Session D | released — 1-2/1-6 landed on `phase-1b`; `recommendationStats()` extended additively |
 | Charts / export | `src/ui/charts.js`, `src/ui/export.js` | — | free (0c landed; API stable — see `demo/charts.html`) |
+| Seed + history | `src/data/seed.js`, `src/data/history.js` | Session A | released — 0b-1 landed on `phase-0b` |
+| Compliance standards | `src/data/compliance.js` | — | free (new in 1c; readiness thresholds are calibrated to the history seed) |
+| Charts / export | `src/ui/charts.js`, `src/ui/export.js` | — | free (0c landed; API stable — see `demo/charts.html`). `export.js` unchanged by 1c — consumed only |
 | Modal / calendar | `src/ui/modal.js`, `calendar.js` | — | free |
 | Signature | `src/ui/signature.js` | Session C | released — 1-1/1-3/1-4/1-5/1-7 landed on `phase-1a` |
 | Dashboard | `src/views/dashboard.js` | — | free |
@@ -92,6 +95,8 @@ Update this table when you claim or release files.
 | Insights | `src/views/insights.js` | Session A | released — 0b-2 landed on `phase-0b` |
 | Reports | `src/views/reports.js` | — | free |
 | Company detail | `src/views/companyDetail.js` | Session D | released — 1-2/1-6 landed on `phase-1b` |
+| Reports | `src/views/reports.js`, `src/views/reportBodies.js` | — | free (1-8/2-4/5-1 landed) |
+| Company detail | `src/views/companyDetail.js` | Session C | released — 1-1/1-3/1-4/1-5/1-7 landed on `phase-1a` |
 | Mobile | `src/views/mobile.js` | Session C | released — 1-1/1-3/1-4/1-5/1-7 landed on `phase-1a` |
 | Inventory | `src/views/inventory.js` | — | free |
 | Finance | `src/views/finance.js` | — | free |

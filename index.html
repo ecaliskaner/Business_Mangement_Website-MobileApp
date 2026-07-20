@@ -167,7 +167,30 @@
           </article>
         </div></section>
 
-        <section id="reports" class="view"><div class="page-heading compact"><div><p class="overline">RAPORLAMA</p><h1>Hazır raporlar</h1><p>Müşterinizle paylaşılabilir, denetlenebilir operasyon çıktıları.</p></div><button class="primary-btn" id="createReport">＋ Rapor oluştur</button></div><div id="reportGrid" class="report-grid"></div></section>
+        <section id="reports" class="view">
+          <div class="page-heading compact"><div><p class="overline">RAPORLAMA</p><h1>Hazır raporlar</h1><p>Müşterinizle paylaşılabilir, denetlenebilir operasyon çıktıları.</p></div><button class="primary-btn" id="createReport">＋ Rapor oluştur</button></div>
+
+          <!-- Phase 5-1: compliance badges, computed live from visit history -->
+          <article class="panel compliance-panel">
+            <div class="panel-header">
+              <div><h2>Denetim ve uyum durumu</h2><p>Standart bazında hazırlık, ziyaret geçmişinden hesaplanır.</p></div>
+            </div>
+            <div id="complianceStrip" class="compliance-strip"></div>
+          </article>
+
+          <!-- Phase 2-4: 3rd Eye (3. Göz) independent audit records -->
+          <article class="panel third-eye-panel">
+            <div class="panel-header">
+              <div><h2>3. Göz bağımsız denetim</h2><p>Servis ekibinden bağımsız denetçi tarafından yapılan doğrulama ziyaretleri.</p></div>
+            </div>
+            <div id="thirdEyeSummary" class="rep-stats"></div>
+            <div id="thirdEyeList" class="third-eye-list"></div>
+            <p class="overline" style="margin-top:16px;">DENETİM KAPSAMA DURUMU</p>
+            <div id="thirdEyeCoverage" class="te-coverage"></div>
+          </article>
+
+          <div id="reportGrid" class="report-grid"></div>
+        </section>
 
         <!-- Phase 2: Inventory Management View -->
         <section id="inventory" class="view">
