@@ -2354,3 +2354,91 @@ tr.rec-row-selected > td { background: #eef4ff !important; }
 .te-cov-site { font-size: 12px; font-weight: 700; }
 .te-cov-state { font-size: 10px; color: var(--muted); }
 .te-cov.due .te-cov-state { color: #b45309; font-weight: 600; }
+/* ===== Phase 2: analytics upgrade (2-1 / 2-2 / 2-3) ===== */
+
+/* Multi-select filter chips. --chip-accent is set inline per pest type so the
+   active chip matches its series colour in the chart. */
+.chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.chip-toggle {
+  --chip-accent: var(--blue);
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--muted);
+  border-radius: 999px;
+  padding: 5px 11px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background .15s, border-color .15s, color .15s;
+}
+
+.chip-toggle:hover { border-color: var(--chip-accent); color: var(--ink); }
+
+.chip-toggle.active {
+  background: var(--chip-accent);
+  border-color: var(--chip-accent);
+  color: #fff;
+}
+
+/* A deselected chip should still read as "available", not disabled. */
+.chip-toggle:not(.active)::before {
+  content: "";
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--chip-accent);
+  margin-right: 6px;
+  vertical-align: middle;
+  opacity: .45;
+}
+
+.chart-actions { display: flex; gap: 8px; align-items: center; }
+.chart-actions .text-btn { font-size: 10px; font-weight: 700; letter-spacing: .04em; }
+
+/* Two charts side by side inside one panel; collapses on narrow screens. */
+.compare-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+}
+
+.compare-cell { min-width: 0; }
+
+.chart-cell-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.chart-cell-head b { font-size: 12px; font-weight: 700; }
+
+#recFunnelCards .metric-card small { display: block; margin-top: 2px; }
+
+@media (max-width: 900px) {
+  .compare-grid { grid-template-columns: 1fr; }
+}
+
+/* The insights grid is 1.25fr/0.75fr on desktop. The old span-bar chart merely
+   got shorter when that narrowed; a real SVG becomes illegible, so collapse to
+   a single column rather than rendering a 130px-wide chart. */
+@media (max-width: 900px) {
+  .analytics-grid { grid-template-columns: 1fr; }
+  .analytics-grid > article[style*="span 2"] { grid-column: span 1 !important; }
+}
+
+/* A grid item defaults to min-width:auto, which resolves to the SVG's intrinsic
+   viewBox width (640px) and refuses to shrink — the charts then overflow and
+   get clipped by main's overflow-x:hidden. min-width:0 lets .ct-svg's width:100%
+   actually take effect. */
+.analytics-grid > article,
+.analytics-grid .ct-chart {
+  min-width: 0;
+}

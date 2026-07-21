@@ -42,9 +42,9 @@ Claim a task by putting your session name in Owner, and claim its files in
 
 | ID | Task | Status | Owner | Files | Notes |
 |---|---|---|---|---|---|
-| 2-1 | Multi-location / city / region comparison | todo | — | `views/insights.js` | Needs 0b-1 |
-| 2-2 | Multi-select chart filters + per-chart download | todo | — | `views/insights.js`, `ui/charts.js` | |
-| 2-3 | Recommendation statistics | todo | — | `views/insights.js` | raised / actioned / approved; hygiene vs isolation |
+| 2-1 | Multi-location / city / region comparison | **done** | Session F (`phase-2a`) | `views/insights.js` | Tesis ‖ şehir scope toggle; stacked composition + per-location trend line |
+| 2-2 | Multi-select chart filters + per-chart download | **done** | Session F (`phase-2a`) | `views/insights.js` | Pest-type chips drive every chart; SVG+PNG button pair on all 5 charts. `charts.js` needed no change |
+| 2-3 | Recommendation statistics | **done** | Session F (`phase-2a`) | `views/insights.js` | Funnel açılan/aksiyon/onaylı + category donut + per-location close rate |
 | 2-4 | 3rd Eye audit section | **done** | Session E | `views/reports.js` | Visit type `3G` was already in the catalog — reads real audits plus per-site coverage |
 | 2-5 | Technician credential cards | todo | — | `views/team.js` | **Placeholder docs + KVKK notice only** |
 
@@ -174,6 +174,16 @@ call serves the screen, the print layout and the PNG/SVG download. Sizing is
 `demo/charts.html` is a live gallery of all four types plus both export paths.
 It's a verification harness, not part of the app — delete it freely if it ever
 gets in the way.
+
+**Mounting a chart inside a CSS grid needs `min-width: 0` on the grid item.**
+A grid item defaults to `min-width:auto`, which resolves to the SVG's *intrinsic*
+viewBox width (640px) and refuses to shrink — `.ct-svg { width:100% }` then has
+nothing to shrink into, so the chart overflows and `main`'s `overflow-x:hidden`
+silently clips it. Symptom: the chart looks fine on desktop and is cut off on a
+phone, with no horizontal scrollbar to hint at why. Phase 2 hit this on
+`.analytics-grid`; the fix is one rule, not a media query. Inline
+`grid-template-columns: repeat(N, 1fr)` has the same problem for non-chart
+cards — prefer `repeat(auto-fit, minmax(190px, 1fr))`.
 
 A bare `window.print()` (the existing report and QR-sticker buttons) now prints
 the open modal, or the active view, without app chrome — the print stylesheet
