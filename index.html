@@ -492,6 +492,39 @@
               </div>
             </article>
           </div>
+
+          <!-- Phase 4-1 / 4-3: auto-irsaliye + invoice from completed visits -->
+          <article class="panel bill-panel" style="margin-top:16px;">
+            <div class="panel-header" style="margin-bottom:10px;">
+              <div>
+                <p class="overline">TAMAMLANAN ZİYARETLERDEN FATURALAMA</p>
+                <h2>Faturalandırılabilir Ziyaretler</h2>
+                <p class="text-muted" style="font-size:11px; margin-top:2px;">Seçilen ayda tamamlanan servis ziyaretlerinden otomatik irsaliye ve konsolide fatura üretin.</p>
+              </div>
+              <label class="bill-month-label">Dönem
+                <select id="billingMonth" class="form-input" style="height:30px; font-size:12px;"></select>
+              </label>
+            </div>
+            <div class="table-panel" style="border:1px solid var(--line); border-radius:8px; overflow:auto;">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Tesis / Lokasyon</th>
+                    <th>Ziyaret</th>
+                    <th>Kimyasal Uyg.</th>
+                    <th>Gelir</th>
+                    <th>Maliyet</th>
+                    <th>Kâr Marjı</th>
+                    <th>Fatura</th>
+                    <th>Belgeler</th>
+                  </tr>
+                </thead>
+                <tbody id="billableGroupsBody">
+                  <!-- Dynamically populated -->
+                </tbody>
+              </table>
+            </div>
+          </article>
         </section>
 
         <section id="companyDetail" class="view">

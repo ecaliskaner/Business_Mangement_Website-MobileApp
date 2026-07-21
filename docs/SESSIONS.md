@@ -83,6 +83,7 @@ Update this table when you claim or release files.
 | Catalog data | `src/data/catalog.js` | — | free — 1-1/1-3/1-4/1-5/1-7 landed on `phase-1a` |
 | Seed + history | `src/data/seed.js`, `src/data/history.js` | — | free — 0b on `phase-0b`, 1-2/1-6 on `phase-1b`; `recommendationStats()` extended additively (`stage` field) |
 | Compliance standards | `src/data/compliance.js` | — | free (new in 1c; readiness thresholds are calibrated to the history seed) |
+| Billing | `src/data/billing.js` | — | free (new in 4a; deterministic invoice/irsaliye numbering + pricing) |
 | Charts / export | `src/ui/charts.js`, `src/ui/export.js` | — | free — 0c landed; API stable (see `demo/charts.html`), covered every Phase 1c/2a chart unchanged |
 | Modal / calendar | `src/ui/modal.js`, `calendar.js` | — | free |
 | Signature | `src/ui/signature.js` | — | free — 1-1/1-3/1-4/1-5/1-7 landed on `phase-1a` |
@@ -95,7 +96,7 @@ Update this table when you claim or release files.
 | Company detail | `src/views/companyDetail.js` | — | free — 1-1/1-3/1-4/1-5/1-7 on `phase-1a`, 1-2/1-6 on `phase-1b` |
 | Mobile | `src/views/mobile.js` | Session G | released — landed on `phase-3a` |
 | Inventory | `src/views/inventory.js` | — | free |
-| Finance | `src/views/finance.js` | Session H | **claimed (phase-4a)** — 4-1/4-3 |
+| Finance | `src/views/finance.js` | — | free (4-1/4-3 landed on `phase-4a`) |
 
 ---
 
