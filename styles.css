@@ -2442,3 +2442,147 @@ tr.rec-row-selected > td { background: #eef4ff !important; }
 .analytics-grid .ct-chart {
   min-width: 0;
 }
+
+/* ===== Phase 3a (Session G): field realism — live GPS, geofence, route opt, credentials, offline, NFC, audit ===== */
+
+/* --- 3-1 live map: smooth drift on the existing .map-person elements --- */
+.map-person { transition: left 1.05s linear, top 1.05s linear; }
+
+/* --- 3-2 geofence rings, site pins, route overlay on the map canvas --- */
+.geofence-layer { position: absolute; inset: 0; z-index: 1; pointer-events: none; }
+.geofence-ring {
+  position: absolute; transform: translate(-50%, -50%);
+  border: 1.5px dashed rgba(23, 105, 224, .5);
+  border-radius: 50%; background: rgba(23, 105, 224, .07);
+  height: 0;
+}
+.geofence-pin {
+  position: absolute; transform: translate(-50%, -140%);
+  font-size: 13px; white-space: nowrap; text-align: center;
+}
+.geofence-pin span, .geofence-depot span {
+  display: block; margin-top: 1px; font: 700 8px "DM Sans", sans-serif;
+  color: #37505f; background: rgba(255, 255, 255, .82); border-radius: 4px; padding: 1px 4px;
+}
+.geofence-depot { position: absolute; transform: translate(-50%, -140%); font-size: 14px; text-align: center; }
+.geofence-depot span { color: #6b4a2a; }
+.route-overlay { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 1; pointer-events: none; }
+
+/* --- field realism panels grid --- */
+.field-realism-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 14px;
+}
+.field-realism-grid > article { min-width: 0; }
+@media (max-width: 1100px) { .field-realism-grid { grid-template-columns: 1fr; } }
+
+/* geofence event feed */
+.geofence-feed { display: grid; gap: 6px; max-height: 250px; overflow: auto; }
+.geo-empty { margin: 0; padding: 12px; font-size: 11px; color: var(--muted); text-align: center; }
+.geo-event {
+  display: grid; grid-template-columns: 24px 1fr auto; gap: 8px; align-items: center;
+  padding: 8px 10px; border-radius: 7px; border: 1px solid var(--line); background: #fff;
+}
+.geo-event.enter { border-left: 3px solid var(--green); }
+.geo-event.exit  { border-left: 3px solid #c2673a; }
+.geo-dot {
+  display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%;
+  font-size: 13px; font-weight: 800; color: #fff;
+}
+.geo-event.enter .geo-dot { background: var(--green); }
+.geo-event.exit  .geo-dot { background: #c2673a; }
+.geo-body { min-width: 0; }
+.geo-body b { display: block; font-size: 11px; }
+.geo-body small { display: block; margin-top: 1px; color: var(--muted); font-size: 10px; }
+.geo-event time { color: #8c969f; font-size: 10px; }
+
+/* --- 3-5 route optimization --- */
+.route-compare { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.route-metric {
+  border: 1px solid var(--line); border-radius: 8px; padding: 9px 11px; background: #fff;
+}
+.route-metric span { display: block; color: var(--muted); font-size: 10px; }
+.route-metric strong { display: block; margin-top: 3px; font: 700 17px Inter, sans-serif; letter-spacing: -.5px; }
+.route-metric.active { border-color: #89bafa; background: #f4f8ff; }
+.route-metric.saved { border-color: #bbe7d5; background: #f0fbf6; }
+.route-metric.saved strong { color: var(--green); }
+.route-mode { margin: 10px 0 8px; font-size: 11px; font-weight: 700; color: #55616b; }
+.route-chips { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.route-chip {
+  display: inline-block; padding: 3px 8px; border-radius: 20px; font-size: 10px; font-weight: 700;
+  background: #eef2f6; color: #44505c;
+}
+.route-chip.depot { background: #efe5d8; color: #6b4a2a; }
+.route-arrow { color: #b4bdc5; font-size: 10px; }
+
+/* --- 2-5 technician credential cards --- */
+.cred-panel { margin-top: 14px; }
+.cred-head { display: flex; align-items: center; gap: 11px; margin-bottom: 12px; }
+.cred-head b { display: block; font-size: 13px; }
+.cred-head span { display: block; margin-top: 2px; color: var(--muted); font-size: 11px; }
+.cred-docs { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 10px; }
+.cred-doc {
+  display: grid; grid-template-columns: 30px 1fr auto; gap: 9px; align-items: center;
+  padding: 11px; border: 1px solid var(--line); border-radius: 8px; background: #fff;
+}
+.cred-doc-icon {
+  display: grid; place-items: center; width: 30px; height: 30px; border-radius: 8px;
+  background: #f1f5f9; font-size: 15px;
+}
+.cred-doc-body { min-width: 0; }
+.cred-doc-body b { display: block; font-size: 12px; }
+.cred-doc-body small { display: block; margin-top: 2px; color: var(--muted); font-size: 10px; }
+.cred-doc-status { font-size: 9px; font-weight: 700; padding: 3px 7px; border-radius: 20px; }
+.cred-doc-status.ok { background: var(--green-soft); color: #087353; }
+.cred-doc-status.warn { background: var(--amber-soft); color: #aa6703; }
+.cred-kvkk {
+  margin: 12px 0 0; padding: 10px 12px; border-radius: 8px;
+  background: #f6f8fa; border: 1px solid var(--line);
+  font-size: 10px; line-height: 1.5; color: #55616b;
+}
+
+/* --- 3-3 offline toggle + queue badge (mobile status bar) --- */
+.phone-net-toggle {
+  position: relative; display: inline-flex; align-items: center; gap: 4px;
+  border: 0; background: transparent; color: inherit; font: inherit; cursor: pointer;
+  padding: 0; font-size: 11px;
+}
+.phone-net-toggle.offline #phoneNetworkState { color: #ffd27d; font-weight: 700; }
+.offline-queue-badge {
+  display: inline-grid; place-items: center; min-width: 16px; height: 16px; padding: 0 4px;
+  border-radius: 9px; background: var(--amber, #d97706); color: #fff; font-size: 9px; font-weight: 800;
+}
+
+/* --- 3-6 audit warnings (work view) --- */
+.audit-panel { margin-bottom: 14px; }
+.audit-count-badge {
+  display: inline-grid; place-items: center; min-width: 20px; height: 20px; padding: 0 6px;
+  border-radius: 10px; background: var(--red-soft); color: #bc312c; font-size: 11px; font-weight: 800;
+  vertical-align: middle; margin-left: 4px;
+}
+.audit-summary { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.audit-sum { font-size: 10px; font-weight: 700; color: #55616b; padding: 3px 8px; border-radius: 20px; background: #f1f5f9; }
+.audit-sum b { margin-right: 2px; }
+.audit-sum.critical { background: var(--red-soft); color: #bc312c; }
+.audit-sum.high { background: var(--amber-soft); color: #aa6703; }
+.audit-body { display: grid; gap: 8px; }
+.audit-empty { margin: 0; padding: 12px; font-size: 11px; color: var(--muted); text-align: center; }
+.audit-row {
+  display: grid; grid-template-columns: 34px 1fr auto; gap: 10px; align-items: center;
+  padding: 11px 12px; border: 1px solid var(--line); border-radius: 8px; background: #fff;
+}
+.audit-row.critical { border-left: 3px solid var(--red); }
+.audit-row.high { border-left: 3px solid var(--amber); }
+.audit-row.medium { border-left: 3px solid #cbd3da; }
+.audit-row.live { background: #fffdf5; }
+.audit-icon {
+  display: grid; place-items: center; width: 32px; height: 32px; border-radius: 8px;
+  background: #f1f5f9; font-size: 16px;
+}
+.audit-main { min-width: 0; }
+.audit-main b { font-size: 12px; }
+.audit-main p { margin: 2px 0; color: #55616b; font-size: 11px; }
+.audit-main small { color: var(--muted); font-size: 10px; }
+.audit-live {
+  font-size: 8px; font-weight: 800; color: #fff; background: var(--red);
+  padding: 1px 5px; border-radius: 10px; vertical-align: middle;
+}

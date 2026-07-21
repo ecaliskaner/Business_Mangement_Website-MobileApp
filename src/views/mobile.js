@@ -11,6 +11,74 @@ import { recalculateSiteStats, save } from '../core/state.js';
 import { calculateDosage, getChemicalDocuments, normalizePestCode, pestNameByCode, pestsForEquipment, visitTypes } from '../data/catalog.js';
 import { deductStock, renderInventory } from '../views/inventory.js';
 
+// ===== Offline sync simulation (task 3-3) =====
+//
+// A self-contained, in-memory outbox — deliberately NOT part of core state.
+// While the phone is "offline", each record the technician saves is still
+// written to local state (as before) but its *server sync* is deferred: it goes
+// into this queue and a live badge counts it. Reconnecting visibly drains the
+// queue. This is the demo we want; there is no real backend to sync to.
+let offlineMode = false;
+let syncQueue = [];
+let draining = false;
+
+function updateOfflineUi() {
+  const label = $('#phoneNetworkState');
+  const badge = $('#offlineQueueBadge');
+  const toggle = $('#btnToggleOffline');
+  if (label) label.textContent = offlineMode ? '✈ Çevrimdışı' : '📶 Online';
+  if (toggle) toggle.classList.toggle('offline', offlineMode);
+  if (badge) {
+    badge.textContent = String(syncQueue.length);
+    badge.classList.toggle('hidden', syncQueue.length === 0);
+  }
+}
+
+// Record that something needs to reach the server. Online → it "syncs"
+// immediately; offline → it waits in the outbox with a visible count.
+function syncRecord(label) {
+  if (offlineMode) {
+    syncQueue.push({ label, at: new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) });
+    updateOfflineUi();
+    addTelemetryLog(`ÇEVRİMDIŞI: "${label}" yerel kuyruğa alındı (bekleyen: ${syncQueue.length}).`);
+  } else {
+    addTelemetryLog(`SENKRON: "${label}" sunucuya iletildi.`);
+  }
+}
+
+// Drain the outbox one record at a time so the count visibly ticks down.
+function drainQueue() {
+  if (draining) return;
+  if (!syncQueue.length) { updateOfflineUi(); return; }
+  draining = true;
+  addTelemetryLog(`BAĞLANTI GERİ GELDİ: ${syncQueue.length} bekleyen kayıt senkronize ediliyor...`);
+  const step = () => {
+    const item = syncQueue.shift();
+    if (item) addTelemetryLog(`↑ Senkronize edildi: "${item.label}" (kalan: ${syncQueue.length}).`);
+    updateOfflineUi();
+    if (syncQueue.length) {
+      setTimeout(step, 420);
+    } else {
+      draining = false;
+      toast('Tüm bekleyen kayıtlar sunucuyla senkronize edildi.');
+      addTelemetryLog('BAŞARILI: Çevrimdışı kuyruk tamamen boşaltıldı.');
+    }
+  };
+  setTimeout(step, 300);
+}
+
+export function toggleOfflineMode() {
+  offlineMode = !offlineMode;
+  if (offlineMode) {
+    addTelemetryLog('UYARI: Cihaz çevrimdışı moda alındı. Kayıtlar yerelde kuyruğa alınacak.');
+    toast('Çevrimdışı mod açık — kayıtlar cihazda tutuluyor.');
+    updateOfflineUi();
+  } else {
+    updateOfflineUi();
+    drainQueue();
+  }
+}
+
 export function renderMobileRoute() {
   const container = $('#mobileWorkOrdersList');
   if (!container) return;
@@ -88,17 +156,21 @@ export function showMobileJobDetail(work) {
     }
   }
   
-  // 2. QR Start
+  // 2. QR / NFC Start
   const cardQr = $('#cardQrStart');
   const btnQr = $('#btnMobScanFirstQr');
+  const btnNfc = $('#btnMobScanFirstNfc');
   const indQr = $('#indicatorQrVerified');
   cardQr.classList.toggle('disabled', !ui.mobArrived);
   btnQr.disabled = !ui.mobArrived;
+  if (btnNfc) btnNfc.disabled = !ui.mobArrived;
   if (ui.mobQrStarted) {
     btnQr.classList.add('hidden');
+    if (btnNfc) btnNfc.classList.add('hidden');
     indQr.classList.remove('hidden');
   } else {
     btnQr.classList.remove('hidden');
+    if (btnNfc) btnNfc.classList.remove('hidden');
     indQr.classList.add('hidden');
   }
   
@@ -154,6 +226,21 @@ export function showMobileJobDetail(work) {
 // Reflects signature state into the card and gates the save button. Roadmap
 // §10 requires both a customer and a technician signature before a visit can
 // be closed, so "all stations checked" alone is no longer enough.
+// Shared completion for the entry QR / NFC step — both routes register the same
+// real-work-start, differing only in the method label they log (task 3-4).
+export function startFirstScan(scannedCode, method) {
+  ui.mobQrStarted = true;
+  ui.mobJob.status = 'started_by_first_qr';
+  ui.mobJob.startMethod = method;
+  ui.mobJob.realWorkStartedAt = new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+  ui.mobJob.startedTimestamp = Date.now();
+  save();
+  showMobileJobDetail(ui.mobJob);
+  addTelemetryLog(`İLK ${method} OKUTULDU: ${scannedCode} ile gerçek mesai başlangıcı tescil edildi!`);
+  syncRecord(`Mesai başlangıcı (${method}: ${scannedCode})`);
+  toast(`Mesai ${method} ile başladı! İstasyonlar kontrol edilebilir.`);
+}
+
 export function updateSignatureGate() {
   const stateCust = $('#sigStateCustomer');
   const stateTech = $('#sigStateTech');
@@ -632,9 +719,14 @@ export function mobileClicks(e) {
         }
         $('#cardQrStart').classList.remove('disabled');
         $('#btnMobScanFirstQr').disabled = false;
-        
+        if ($('#btnMobScanFirstNfc')) $('#btnMobScanFirstNfc').disabled = false;
+
+        const site = state.sites.find(s => s.id === ui.mobJob.siteId) || state.sites[0];
+        // Geofence enter event (task 3-2, mobile side): crossing into the site's
+        // 150 m fence is the audit trail's arrival marker.
+        addTelemetryLog(`GEOFENCE GİRİŞ: ${site.company} — ${site.name} sınırına (150 m) girildi.`);
         addTelemetryLog(`BAŞARILI: Teknisyen konumu geofence sınırları içerisinde doğrulandı! (${lat.toFixed(4)}, ${lon.toFixed(4)})`);
-        toast("GPS Konumu doğrulandı. İlk QR okutarak mesaiyi başlatın.");
+        toast("GPS Konumu doğrulandı. İlk QR/NFC okutarak mesaiyi başlatın.");
         updateSimStepsHighlight();
       };
 
@@ -667,19 +759,29 @@ export function mobileClicks(e) {
         "Giriş QR Kodu Tara",
         "Tesis giriş kapısındaki kontrol ünitesinde yer alan QR barkodunu okutun.",
         site.stations,
-        (scannedCode) => {
-          ui.mobQrStarted = true;
-          ui.mobJob.status = 'started_by_first_qr';
-          ui.mobJob.realWorkStartedAt = new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
-          ui.mobJob.startedTimestamp = Date.now();
-          save();
-          showMobileJobDetail(ui.mobJob);
-          addTelemetryLog(`İLK QR OKUTULDU: ${scannedCode} barkodu ile gerçek mesai başlangıcı tescil edildi!`);
-          toast("Mesai gerçek anlamda başladı! İstasyonlar kontrol edilebilir.");
-        }
+        (scannedCode) => startFirstScan(scannedCode, 'QR')
       );
     }
-    
+
+    // NFC alternative to the entry QR (task 3-4). No camera: an NFC tap is an
+    // instant read, so this simulates one against the entry station directly.
+    if (e.target.id === 'btnMobScanFirstNfc') {
+      const site = state.sites.find(s => s.id === ui.mobJob.siteId) || state.sites[0];
+      const entry = site.stations[0];
+      const btnNfc = $('#btnMobScanFirstNfc');
+      addTelemetryLog("NFC alanı etkin... Giriş etiketine yaklaşılması bekleniyor.");
+      if (btnNfc) { btnNfc.textContent = '📡 NFC Okunuyor...'; btnNfc.disabled = true; }
+      setTimeout(() => {
+        startFirstScan(entry ? entry.code : 'NFC', 'NFC');
+      }, 900);
+    }
+
+    // Offline connectivity toggle in the phone status bar (task 3-3).
+    if (e.target.closest('#btnToggleOffline')) {
+      toggleOfflineMode();
+      return true;
+    }
+
     if (e.target.id === 'btnCancelScan') {
       if (window.activeHtml5QrCode && window.activeHtml5QrCode.isScanning) {
         window.activeHtml5QrCode.stop().catch(err => console.error(err));
@@ -795,6 +897,7 @@ export function mobileClicks(e) {
           ? findings.map(f => `${f.count} adet ${f.pestName}`).join(', ')
           : 'aktivite yok';
         addTelemetryLog(`İSTASYON DENETLENDİ: ${s.code} — ${detail}`);
+        syncRecord(`İstasyon denetimi ${s.code}`);
         toast(`${s.code} kontrolü kaydedildi.`);
 
         $('#pageMobileInspect').classList.add('hidden');
@@ -879,7 +982,8 @@ export function mobileClicks(e) {
       recalculateSiteStats(site);
       save();
       
-      addTelemetryLog(`İŞ BİTTİ: Rapor sunucuya başarıyla senkronize edildi.`);
+      addTelemetryLog(`İŞ BİTTİ: Ziyaret raporu tamamlandı.`);
+      syncRecord(`Ziyaret raporu ${ui.mobJob.id}`);
       toast("İş emri tamamlandı. Raporlar senkronize edildi!");
       
       render();
@@ -1000,6 +1104,7 @@ export function mobChemicalSubmit(e) {
       renderChemicalDocs('');
       updateDosePanel();
       addTelemetryLog(`KİMYASAL UYGULANDI: ${dose.chemicalName} — ${dose.quantityText}${dose.neat ? '' : ` + ${dose.waterLitres} lt su`} / ${dose.measured} ${dose.basisUnit}`);
+      syncRecord(`Kimyasal uygulaması ${dose.chemicalName}`);
       toast(`${dose.chemicalName} eklendi: ${dose.quantityText}${dose.neat ? '' : ` + ${dose.waterLitres} lt su`}.`);
     }
   return false;

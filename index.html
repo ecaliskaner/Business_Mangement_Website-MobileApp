@@ -113,6 +113,18 @@
             </div>
           </div>
 
+          <!-- Audit warnings (task 3-6): GPS/QR integrity anomalies -->
+          <article class="panel audit-panel">
+            <div class="panel-header">
+              <div>
+                <p class="overline">DENETİM UYARILARI</p>
+                <h2>GPS + QR bütünlük kontrolü <span class="audit-count-badge" id="auditWarningCount">0</span></h2>
+              </div>
+              <div class="audit-summary" id="auditWarningSummary"></div>
+            </div>
+            <div id="auditWarningsBody" class="audit-body"></div>
+          </article>
+
           <div class="work-layout" id="workListWrapper">
             <article class="panel">
               <div class="panel-header">
@@ -146,8 +158,25 @@
         </section>
 
         <section id="team" class="view">
-          <div class="page-heading compact"><div><p class="overline">EKİP & ROTA</p><h1>Saha görünürlüğü</h1><p>Teknisyenlerin rota, zaman ve doğrulama durumları.</p></div><button class="secondary-btn" data-action="route">Rotaları optimize et</button></div>
-          <div class="team-layout"><article class="panel map-panel"><div class="map-toolbar"><b>İstanbul saha bölgesi</b><span class="live-pill"><i></i> 11 kişi çevrimiçi</span></div><div class="map-canvas"><div class="map-label label-one">AVRUPA YAKASI</div><div class="map-label label-two">ANADOLU YAKASI</div><button class="map-person active" data-tech="Ayşe Demir" style="left:28%;top:42%">AD</button><button class="map-person" data-tech="Mert Kaya" style="left:57%;top:31%">MK</button><button class="map-person" data-tech="Ece Yılmaz" style="left:70%;top:62%">EY</button><button class="map-person" data-tech="Can Öztürk" style="left:43%;top:72%">CÖ</button></div></article><aside class="panel tech-panel"><p class="overline">CANLI DURUM</p><div id="techDetail"></div><div class="verification-note"><span>✓</span><p><b>İlk QR doğrulaması</b><br />Gerçek servis başlangıcı, tesiste ilk QR okutulduğunda kayda alınır.</p></div></aside></div>
+          <div class="page-heading compact"><div><p class="overline">EKİP & ROTA</p><h1>Saha görünürlüğü</h1><p>Teknisyenlerin rota, zaman ve doğrulama durumları.</p></div><span class="live-pill" style="font-size:11px;"><i></i> Canlı GPS simülasyonu</span></div>
+          <div class="team-layout"><article class="panel map-panel"><div class="map-toolbar"><b>İstanbul saha bölgesi</b><span class="live-pill"><i></i> 4 teknisyen sahada</span></div><div class="map-canvas"><div class="map-label label-one">AVRUPA YAKASI</div><div class="map-label label-two">ANADOLU YAKASI</div><button class="map-person active" data-tech="Ayşe Demir" style="left:24%;top:58%">AD</button><button class="map-person" data-tech="Mert Kaya" style="left:24%;top:58%">MK</button><button class="map-person" data-tech="Ece Yılmaz" style="left:24%;top:58%">EY</button><button class="map-person" data-tech="Can Öztürk" style="left:24%;top:58%">CÖ</button></div></article><aside class="panel tech-panel"><p class="overline">CANLI DURUM</p><div id="techDetail"></div><div class="verification-note"><span>✓</span><p><b>İlk QR doğrulaması</b><br />Gerçek servis başlangıcı, tesiste ilk QR okutulduğunda kayda alınır.</p></div></aside></div>
+
+          <div class="field-realism-grid">
+            <article class="panel geofence-panel">
+              <div class="panel-header"><div><p class="overline">GEOFENCE OLAYLARI</p><h2>Giriş / çıkış akışı</h2></div><span class="live-pill"><i></i> canlı</span></div>
+              <div id="geofenceFeed" class="geofence-feed"></div>
+            </article>
+            <article class="panel route-opt-panel">
+              <div class="panel-header"><div><p class="overline">ROTA OPTİMİZASYONU</p><h2>Önce / sonra</h2></div><button class="secondary-btn" id="btnRouteOptimize">⚡ Rotayı optimize et</button></div>
+              <div id="routeOptBody" class="route-opt-body"></div>
+            </article>
+          </div>
+
+          <article class="panel cred-panel">
+            <div class="panel-header"><div><p class="overline">TEKNİSYEN BELGELERİ</p><h2>Yetkinlik & uygunluk kartları</h2></div><span class="status-chip healthy">KVKK uyumlu</span></div>
+            <div id="techCredentials" class="tech-credentials"></div>
+          </article>
+
           <article class="panel roster-panel"><div class="panel-header"><h2>Bugünkü ekip</h2><button class="text-btn">Ekip yönetimi →</button></div><div id="roster" class="roster"></div></article>
         </section>
 
@@ -1145,9 +1174,10 @@
                 <div class="phone-status-bar">
                   <span class="phone-time" id="phoneTime">14:30</span>
                   <div class="phone-status-icons">
-                    <span>📶</span>
-                    <span>📶</span>
-                    <span id="phoneNetworkState">Online</span>
+                    <button type="button" id="btnToggleOffline" class="phone-net-toggle" title="Bağlantıyı aç/kapat">
+                      <span id="phoneNetworkState">📶 Online</span>
+                      <span id="offlineQueueBadge" class="offline-queue-badge hidden">0</span>
+                    </button>
                     <span>🔋 85%</span>
                   </div>
                 </div>
@@ -1206,12 +1236,15 @@
                       <!-- QR Start Card -->
                       <div class="mob-action-card disabled" id="cardQrStart">
                         <div class="mob-card-desc">
-                          <b>2. Giriş QR Kod Kilidi</b>
-                          <p>Mesai gerçek anlamda başlaması için ilk istasyon QR kodu taranmalıdır.</p>
+                          <b>2. Giriş QR / NFC Kilidi</b>
+                          <p>Mesai gerçek anlamda başlaması için ilk istasyon QR kodu taranmalı veya NFC etiketi okutulmalıdır.</p>
                         </div>
-                        <button class="primary-btn mob-btn" id="btnMobScanFirstQr" disabled>📷 İlk QR Kodunu Tara</button>
+                        <div class="mob-buttons-row">
+                          <button class="primary-btn mob-half-btn" id="btnMobScanFirstQr" disabled>📷 İlk QR Tara</button>
+                          <button class="secondary-btn mob-half-btn" id="btnMobScanFirstNfc" disabled>📡 NFC Oku</button>
+                        </div>
                         <div class="verified-indicator hidden" id="indicatorQrVerified">
-                          <span>✓</span> İlk QR Taranarak İş Başlatıldı
+                          <span>✓</span> İlk QR/NFC ile İş Başlatıldı
                         </div>
                       </div>
 

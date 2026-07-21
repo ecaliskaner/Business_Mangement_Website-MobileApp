@@ -46,18 +46,18 @@ Claim a task by putting your session name in Owner, and claim its files in
 | 2-2 | Multi-select chart filters + per-chart download | **done** | Session F (`phase-2a`) | `views/insights.js` | Pest-type chips drive every chart; SVG+PNG button pair on all 5 charts. `charts.js` needed no change |
 | 2-3 | Recommendation statistics | **done** | Session F (`phase-2a`) | `views/insights.js` | Funnel açılan/aksiyon/onaylı + category donut + per-location close rate |
 | 2-4 | 3rd Eye audit section | **done** | Session E | `views/reports.js` | Visit type `3G` was already in the catalog — reads real audits plus per-site coverage |
-| 2-5 | Technician credential cards | todo | Session G (`phase-3a`) | `views/team.js` | **Placeholder docs + KVKK notice only** |
+| 2-5 | Technician credential cards | **done** | Session G (`phase-3a`) | `views/team.js` | Placeholder docs + KVKK notice; identifiers masked, no real PII |
 
 ## Phase 3 — Field realism
 
 | ID | Task | Status | Owner | Files | Notes |
 |---|---|---|---|---|---|
-| 3-1 | Live technician map, simulated GPS | todo | Session G (`phase-3a`) | `views/team.js` | |
-| 3-2 | Geofence enter/exit events | todo | Session G (`phase-3a`) | `views/team.js`, `views/mobile.js` | |
-| 3-3 | Offline sync simulation | todo | Session G (`phase-3a`) | `views/mobile.js` | Queue badge → visible drain. Simulated in-memory queue — **no** `core/state.js` change |
-| 3-4 | NFC scan alongside QR | todo | Session G (`phase-3a`) | `views/mobile.js` | Insectram parity |
-| 3-5 | Route optimization before/after | todo | Session G (`phase-3a`) | `views/team.js` | |
-| 3-6 | Audit warnings | todo | Session G (`phase-3a`) | `views/work.js` | GPS-no-QR, QR outside fence, short visit |
+| 3-1 | Live technician map, simulated GPS | **done** | Session G (`phase-3a`) | `views/team.js` | 4 techs drift on a 1.1s timer over the abstract canvas; click a pin to select |
+| 3-2 | Geofence enter/exit events | **done** | Session G (`phase-3a`) | `views/team.js`, `views/mobile.js` | 6 geofence rings; enter/exit feed on team map + geofence-enter log on mobile GPS arrival |
+| 3-3 | Offline sync simulation | **done** | Session G (`phase-3a`) | `views/mobile.js` | In-memory outbox in mobile.js; badge counts, reconnect drains. No core/state.js change |
+| 3-4 | NFC scan alongside QR | **done** | Session G (`phase-3a`) | `views/mobile.js` | NFC button beside QR on entry step; shared startFirstScan() completion |
+| 3-5 | Route optimization before/after | **done** | Session G (`phase-3a`) | `views/team.js` | Nearest-neighbour vs seed order; ~37% saved, polyline overlay on map |
+| 3-6 | Audit warnings | **done** | Session G (`phase-3a`) | `views/work.js` | Derived from getVisits(): short-visit honest (<80% site avg), QR-outside/GPS-no-QR deterministic + live arrived_gps work orders |
 
 ## Phase 4 — Business layer
 
@@ -246,6 +246,27 @@ usage, activity-only, recommendation. Visit ≈ service and non-conformity ≈
 recommendation, and pesticide usage is partly covered inside the visit report
 and the audit package's chemical log. **Placement-list activity** and a
 standalone **activity-only** report have no equivalent yet.
+
+**Field realism landed (Phase 3a / Session G).** `views/team.js` runs a
+self-contained GPS simulation: a module-local `setInterval` (1.1s) drifts the
+four `.map-person` elements between waypoints and detects geofence crossings.
+It is started idempotently from `renderTeam()` via `startFieldSimulation()` and
+can be paused with `stopFieldSimulation()`. The abstract canvas uses
+percentage coordinates, not real geo. Site pins/fences live in `SITE_PINS`.
+
+**The mobile offline outbox is in-memory only, by design.** `views/mobile.js`
+holds `syncQueue` at module scope — it is NOT part of `core/state.js`, so a
+reload empties it (that is the intended demo). `syncRecord(label)` is called at
+each save point; offline it queues + badges, online it logs an immediate sync.
+NFC and QR entry share `startFirstScan(code, method)`.
+
+**Audit warnings (`views/work.js`, `auditWarnings()`) are derived, not stored.**
+Short-visit is honest (`onSiteMin < 0.8 ×` the site's own average — calibrated
+to the current seed; the tightest real visit is 0.707, so re-check if the seed
+moves). QR-outside-fence and GPS-no-QR are deterministic hashes of the visit id
+plus any live work order sitting in `arrived_gps`. No `app.js` handlers were
+added this wave — new clicks fold into `teamRosterClicks` / `mobileClicks`, and
+live audit rows reuse the existing `[data-work]` handler.
 
 **Reset demo state properly** — it lives in three places:
 ```bash

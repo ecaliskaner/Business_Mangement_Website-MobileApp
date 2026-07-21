@@ -88,12 +88,12 @@ Update this table when you claim or release files.
 | Signature | `src/ui/signature.js` | — | free — 1-1/1-3/1-4/1-5/1-7 landed on `phase-1a` |
 | Dashboard | `src/views/dashboard.js` | — | free |
 | Sites | `src/views/sites.js` | — | free |
-| Work orders | `src/views/work.js` | Session G | **claimed (phase-3a)** — 3-6 audit warnings |
-| Team | `src/views/team.js` | Session G | **claimed (phase-3a)** — 2-5/3-1/3-2/3-5 |
+| Work orders | `src/views/work.js` | Session G | released — landed on `phase-3a` |
+| Team | `src/views/team.js` | Session G | released — landed on `phase-3a` |
 | Insights | `src/views/insights.js` | — | free — 0b-2 on `phase-0b`, 2-1/2-2/2-3 on `phase-2a` |
 | Reports | `src/views/reports.js`, `src/views/reportBodies.js` | — | free — 1-8/2-4/5-1 landed on `phase-1c` |
 | Company detail | `src/views/companyDetail.js` | — | free — 1-1/1-3/1-4/1-5/1-7 on `phase-1a`, 1-2/1-6 on `phase-1b` |
-| Mobile | `src/views/mobile.js` | Session G | **claimed (phase-3a)** — 3-2/3-3/3-4 (offline queue self-contained here) |
+| Mobile | `src/views/mobile.js` | Session G | released — landed on `phase-3a` |
 | Inventory | `src/views/inventory.js` | — | free |
 | Finance | `src/views/finance.js` | Session H | **claimed (phase-4a)** — 4-1/4-3 |
 

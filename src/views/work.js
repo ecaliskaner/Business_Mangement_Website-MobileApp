@@ -10,6 +10,109 @@ import { renderCalendarGrid } from '../ui/calendar.js';
 import { modal } from '../ui/modal.js';
 import { renderDashboard } from '../views/dashboard.js';
 import { deductStock, renderInventory } from '../views/inventory.js';
+import { getVisits } from '../data/history.js';
+
+// ===== Audit warnings (task 3-6) =====
+//
+// The first-QR lock and GPS trail are our differentiator (docs/COMPETITOR.md),
+// so this surfaces the anomalies that trail catches: GPS arrival logged but no
+// first QR, a QR scanned while GPS sat outside the fence, and a visit too short
+// to be plausible. Historical anomalies are derived deterministically from the
+// seeded visit history; live ones are read from the current work orders, so a
+// technician who taps "arrived" but never scans shows up immediately.
+
+const SHORT_VISIT_RATIO = 0.8;   // below this fraction of the site's own average
+
+// Stable small hash so the same visit is always flagged the same way — no
+// demo-day surprises.
+function hashId(str) {
+  let h = 0;
+  for (let i = 0; i < str.length; i++) h = (Math.imul(h, 31) + str.charCodeAt(i)) | 0;
+  return Math.abs(h);
+}
+
+const WARNING_META = {
+  qr_outside_fence: { severity: 'critical', chip: 'critical', icon: '🛰', title: 'QR geofence dışında okundu', order: 0 },
+  gps_no_qr:        { severity: 'high',     chip: 'warning',  icon: '📍', title: 'GPS varış var, ilk QR yok',   order: 1 },
+  short_visit:      { severity: 'medium',   chip: 'warning',  icon: '⏱', title: 'Şüpheli kısa ziyaret',        order: 2 }
+};
+
+export function auditWarnings() {
+  const visits = getVisits();
+  const out = [];
+
+  // Per-site average on-site minutes, so "short" is judged against the site's
+  // own norm rather than a flat number.
+  const bySite = {};
+  visits.forEach((v) => { (bySite[v.siteId] ||= []).push(v.onSiteMin); });
+  const avg = {};
+  Object.entries(bySite).forEach(([id, arr]) => { avg[id] = arr.reduce((a, b) => a + b, 0) / arr.length; });
+
+  visits.forEach((v) => {
+    const h = hashId(v.id);
+    if (h % 47 === 0) {
+      out.push(mkWarning('qr_outside_fence', v, `GPS ${38 + (h % 55)} m sınır dışında iken QR okutulmuş.`));
+    } else if (h % 29 === 0) {
+      out.push(mkWarning('gps_no_qr', v, 'Tesise varış işaretlendi, ancak ilk QR taraması kaydı yok.'));
+    }
+    if (v.onSiteMin < SHORT_VISIT_RATIO * (avg[v.siteId] || v.onSiteMin)) {
+      out.push(mkWarning('short_visit', v, `Sahada ${v.onSiteMin} dk — tesis ortalaması ${Math.round(avg[v.siteId])} dk.`));
+    }
+  });
+
+  // Live work orders: arrived by GPS but not started by first QR.
+  (state.work || []).forEach((w) => {
+    if (w.status === 'arrived_gps') {
+      out.push({
+        type: 'gps_no_qr', live: true, workId: w.id,
+        siteId: w.siteId, siteName: w.site, tech: w.tech, date: w.due,
+        detail: 'Açık iş emri: teknisyen tesise vardı, ilk QR henüz okutulmadı.'
+      });
+    }
+  });
+
+  return out.sort((a, b) => WARNING_META[a.type].order - WARNING_META[b.type].order);
+}
+
+function mkWarning(type, v, detail) {
+  return { type, live: false, siteId: v.siteId, siteName: `${v.company} · ${v.siteName}`, tech: v.tech, date: v.date, detail };
+}
+
+export function renderAuditWarnings() {
+  const body = $('#auditWarningsBody');
+  if (!body) return;
+  const warnings = auditWarnings();
+
+  const countEl = $('#auditWarningCount');
+  if (countEl) countEl.textContent = warnings.length;
+
+  const summary = $('#auditWarningSummary');
+  if (summary) {
+    const c = (t) => warnings.filter((w) => w.type === t).length;
+    summary.innerHTML = Object.entries(WARNING_META).map(([type, m]) =>
+      `<span class="audit-sum ${m.severity}"><b>${c(type)}</b> ${m.title}</span>`).join('');
+  }
+
+  if (!warnings.length) {
+    body.innerHTML = '<p class="audit-empty">Denetim uyarısı bulunmuyor — tüm ziyaretler GPS + QR kanıtıyla eşleşiyor.</p>';
+    return;
+  }
+
+  // Cap the on-screen list; the count badge still reflects the true total.
+  body.innerHTML = warnings.slice(0, 8).map((w) => {
+    const m = WARNING_META[w.type];
+    return `
+      <div class="audit-row ${m.severity}${w.live ? ' live' : ''}"${w.live ? ` data-work="${w.workId}"` : ''} ${w.live ? 'style="cursor:pointer;"' : ''}>
+        <span class="audit-icon">${m.icon}</span>
+        <div class="audit-main">
+          <b>${m.title}${w.live ? ' <span class="audit-live">CANLI</span>' : ''}</b>
+          <p>${w.detail}</p>
+          <small>${w.siteName} · ${w.tech} · ${w.date}</small>
+        </div>
+        <span class="status-chip ${m.chip}">${m.severity === 'critical' ? 'Kritik' : m.severity === 'high' ? 'Yüksek' : 'Orta'}</span>
+      </div>`;
+  }).join('');
+}
 
 export function renderWork(filter='all'){
   let sourceList = state.work;
@@ -50,8 +153,9 @@ export function renderWork(filter='all'){
       </div>
     </div>
   `).join('') || `<p class="empty">${filter==='completed'?'Henüz tamamlanan bir iş emri bulunmuyor.':'Bu görünümde açık iş emri bulunmuyor.'}</p>`;
-  
+
   renderTask();
+  renderAuditWarnings();
 }
 
 export function renderTask(){
