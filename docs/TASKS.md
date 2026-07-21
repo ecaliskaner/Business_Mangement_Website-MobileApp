@@ -63,9 +63,9 @@ Claim a task by putting your session name in Owner, and claim its files in
 
 | ID | Task | Status | Owner | Files | Notes |
 |---|---|---|---|---|---|
-| 4-1 | Auto-irsaliye generation | todo | Session H (`phase-4a`) | `views/finance.js` | |
+| 4-1 | Auto-irsaliye generation | **done** | Session H | `views/finance.js`, `data/billing.js` | Numbered sevk irsaliyesi per visit's chemical usage; deterministic IRS-YYYY-NNNNNN |
 | 4-2 | Travel vs on-site time, efficiency | todo | — | `views/team.js`, `views/finance.js` | **Wave 4** — spans G+H, deferred until both land |
-| 4-3 | Invoice from completed visits | todo | Session H (`phase-4a`) | `views/finance.js` | Partially exists |
+| 4-3 | Invoice from completed visits | **done** | Session H | `views/finance.js`, `data/billing.js` | Consolidated per site+month, line item per visit, KDV + margin; flows into existing ledger |
 | 4-4 | Notification centre + "report emailed" | todo | Session I (`phase-5a`) | `src/app.js` | |
 
 ## Phase 5 — Hardening
@@ -114,7 +114,7 @@ python scripts/checkimports.py
 
 It flags any module referencing an exported symbol it never imports. The
 pattern also matches comments and strings, so the false-positive list grows as
-the codebase does — ten as of Phase 1c:
+the codebase does — fifteen as of Phase 4a:
 
 | File | Symbol | Why it is spurious |
 |---|---|---|
@@ -124,6 +124,8 @@ the codebase does — ten as of Phase 1c:
 | `ui/signature.js` | `state` | comment |
 | `views/reportBodies.js` | `ui`, `state`, `modal` | all three in one header comment |
 | `views/reports.js` | `render`, `modal`, `state` | comment, the `'#modal'` selector string, and the `te-cov-state` class name |
+| `data/billing.js` | `state`, `renderFinance` | both in comments |
+| `views/finance.js` | `render`, `ui`, `modal` | comments and the `'#modal'` selector string |
 
 Anything beyond these is real — but confirm before believing it. Print the hit
 in context rather than trusting the count:
@@ -246,6 +248,27 @@ usage, activity-only, recommendation. Visit ≈ service and non-conformity ≈
 recommendation, and pesticide usage is partly covered inside the visit report
 and the audit package's chemical log. **Placement-list activity** and a
 standalone **activity-only** report have no equivalent yet.
+
+**Billing is available (4-1 / 4-3).** `data/billing.js` turns completed visits
+into documents, deterministically:
+
+```js
+import { billableGroups, groupFor, invoiceFromGroup, irsaliyeFromVisit, irsaliyeNo }
+  from '../data/billing.js';
+
+const g = groupFor('s1', '2026-07');   // one site, one month
+const invoice = invoiceFromGroup(g);   // superset of a seed invoice + lineItems
+const irs = irsaliyeFromVisit(visit);  // delivery note view-model
+```
+
+Numbering is stable across demo re-runs: `FTR-YYYYMM-<site>` for invoices,
+`IRS-YYYY-<visitseq>` for delivery notes. Revenue = the visit's share of the
+monthly contract, with AC/ES visits billed on top; sites without a seeded
+contract get a synthetic one (flagged `synthetic:true`). Generated invoices are
+`unshift`ed into `state.invoices`, so they render in the existing finance ledger
+and profitability bars unchanged — the shape is a superset of the seed invoices.
+A loss-making month is real, not a bug: Acme (the risk site) runs negative in
+June because contract revenue is diluted across many high-cost visits.
 
 **Reset demo state properly** — it lives in three places:
 ```bash

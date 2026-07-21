@@ -2442,3 +2442,204 @@ tr.rec-row-selected > td { background: #eef4ff !important; }
 .analytics-grid .ct-chart {
   min-width: 0;
 }
+
+/* ============================================
+   Phase 4-1 / 4-3: auto-irsaliye + invoice from completed visits
+   Appended by the business-layer session — see docs/SESSIONS.md.
+   ============================================ */
+
+.bill-panel .panel-header { align-items: flex-start; }
+.bill-month-label {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: none;
+}
+
+/* ---------- billing document (irsaliye + invoice) ---------- */
+
+.bill-doc-shell { display: flex; flex-direction: column; max-height: 86vh; }
+.bill-doc { overflow-y: auto; padding: 2px 4px 4px; color: var(--ink); }
+
+.bill-doc-actions {
+  display: flex;
+  gap: 9px;
+  justify-content: flex-end;
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
+  margin-top: 12px;
+}
+
+.bill-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  border-bottom: 2px solid var(--blue);
+  padding-bottom: 11px;
+  margin-bottom: 14px;
+}
+.bill-title { margin: 0; font-size: 18px; color: var(--blue); }
+.bill-sub { margin: 3px 0 0; font-size: 11px; color: var(--muted); }
+.bill-brand { text-align: right; flex: none; }
+.bill-brand strong { font-size: 14px; letter-spacing: .04em; }
+.bill-no { font-size: 12px; font-weight: 700; margin-top: 2px; }
+.bill-date, .bill-ref { font-size: 10px; color: var(--muted); }
+
+.bill-parties {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+.bill-parties b { font-size: 13px; }
+.bill-party-line { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+.bill-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+  border: 1px solid var(--line);
+  margin-top: 6px;
+}
+.bill-table th {
+  text-align: left;
+  padding: 6px 8px;
+  background: var(--soft);
+  border-bottom: 1px solid var(--line);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: .03em;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.bill-table td { padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.bill-table tr:last-child td { border-bottom: 0; }
+.bill-table .num { text-align: right; white-space: nowrap; }
+
+.bill-empty {
+  font-size: 11px;
+  color: var(--muted);
+  background: var(--soft);
+  border: 1px dashed var(--line);
+  border-radius: 6px;
+  padding: 10px 12px;
+  margin: 6px 0 0;
+}
+
+.bill-totals { display: flex; justify-content: flex-end; margin-top: 14px; }
+.bill-totals-box {
+  width: 280px;
+  max-width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px 14px;
+  background: var(--soft);
+}
+.bill-totals-box > div {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  padding: 3px 0;
+}
+.bill-totals-box .bill-grand {
+  border-top: 1px solid var(--line);
+  margin-top: 4px;
+  padding-top: 7px;
+  font-size: 15px;
+  font-weight: 800;
+}
+.bill-totals-box .bill-margin-line {
+  border-top: 1px dashed var(--line);
+  margin-top: 4px;
+  padding-top: 6px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.bill-signs { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 18px; }
+.bill-sign { flex: 1 1 200px; }
+.bill-sign-pad {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  height: 62px;
+  background: #fafafa;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.bill-sign-pad span {
+  font-family: Arial, sans-serif;
+  font-style: italic;
+  font-size: 19px;
+  font-weight: 700;
+  color: var(--blue);
+  transform: rotate(-4deg);
+  user-select: none;
+}
+.bill-sign-role {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  color: var(--muted);
+  margin-top: 4px;
+  text-align: center;
+}
+.bill-legal { font-size: 10px; color: var(--muted); line-height: 1.5; margin: 12px 0 0; }
+.bill-note { font-size: 10px; color: var(--amber); margin: 6px 0 0; font-style: italic; }
+
+/* irsaliye picker */
+.irs-pick-list {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.irs-pick-row {
+  font: inherit;
+  cursor: pointer;
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 12px;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  background: var(--paper);
+  text-align: left;
+}
+.irs-pick-row:last-child { border-bottom: 0; }
+.irs-pick-row:hover { background: var(--soft); }
+.irs-pick-id b { display: block; font-size: 12px; }
+.irs-pick-id small { font-size: 10px; color: var(--muted); }
+.irs-pick-open { font-size: 11px; color: var(--blue); font-weight: 700; }
+
+@media (max-width: 760px) {
+  .bill-parties { grid-template-columns: 1fr; }
+  .bill-head { flex-direction: column; }
+  .bill-brand { text-align: left; }
+  .bill-panel .panel-header { flex-direction: column; gap: 8px; }
+}
+
+/* ---------- print (extends the Phase 0c ct-printing block) ---------- */
+
+@media print {
+  .bill-doc-actions,
+  .bill-month-label { display: none !important; }
+  .bill-doc-shell, .bill-doc {
+    max-height: none !important;
+    overflow: visible !important;
+    padding: 0 !important;
+  }
+  .bill-head { break-after: avoid; page-break-after: avoid; }
+  .bill-table { break-inside: auto; }
+  .bill-table tr { break-inside: avoid; page-break-inside: avoid; }
+  .bill-totals, .bill-signs { break-inside: avoid; page-break-inside: avoid; }
+  .bill-totals-box { background: #fafafa !important; }
+}

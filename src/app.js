@@ -29,7 +29,7 @@ import {
 import { reportCardClicks, reportModalClicks, generateReportSubmit } from './views/reports.js';
 import { mobileClicks, mobileChemDeleteClicks, mobChemicalSubmit, chemicalDocClicks } from './views/mobile.js';
 import { insightsClicks } from './views/insights.js';
-import { invoiceActionClicks, invoiceFilterClicks } from './views/finance.js';
+import { invoiceActionClicks, invoiceFilterClicks, billingClicks } from './views/finance.js';
 import { stockRefillSubmit } from './views/inventory.js';
 import { createSiteSubmit } from './views/sites.js';
 
@@ -233,6 +233,7 @@ const CLICK_CHAIN = [
   companyTabClicks,
   insightsClicks,
   invoiceActionClicks,
+  billingClicks,
   chemicalDocClicks,
   mobileChemDeleteClicks,
   taskChemDeleteClicks,
