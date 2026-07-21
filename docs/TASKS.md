@@ -66,16 +66,16 @@ Claim a task by putting your session name in Owner, and claim its files in
 | 4-1 | Auto-irsaliye generation | **done** | Session H | `views/finance.js`, `data/billing.js` | Numbered sevk irsaliyesi per visit's chemical usage; deterministic IRS-YYYY-NNNNNN |
 | 4-2 | Travel vs on-site time, efficiency | todo | — | `views/team.js`, `views/finance.js` | **Wave 4** — spans G+H, deferred until both land |
 | 4-3 | Invoice from completed visits | **done** | Session H | `views/finance.js`, `data/billing.js` | Consolidated per site+month, line item per visit, KDV + margin; flows into existing ledger |
-| 4-4 | Notification centre + "report emailed" | todo | Session I (`phase-5a`) | `src/app.js` | |
+| 4-4 | Notification centre + "report emailed" | **done** | Session I (`phase-5a`) | `src/app.js`, `src/ui/demo.js` | Bell badge + centre; simulated e-mail event pushes to `window.__DEMO_NOTIFS__`. Bell reroutes to `openNotificationCenter()` — `modal('notifications')` in `modal.js` is now unused |
 
 ## Phase 5 — Hardening
 
 | ID | Task | Status | Owner | Files | Notes |
 |---|---|---|---|---|---|
 | 5-1 | Compliance badges | **done** | Session E | `data/compliance.js`, `views/reports.js` | Readiness computed from history, not decorative. Red Tractor is honestly out of scope |
-| 5-2 | One-click demo reset | todo | Session I (`phase-5a`) | `src/app.js` | |
-| 5-3 | Guided tour mode | todo | Session I (`phase-5a`) | `src/app.js` | Walks the pitch narrative |
-| 5-4 | Fast role switching | todo | Session I (`phase-5a`) | `core/auth.js` | No re-login during demo |
+| 5-2 | One-click demo reset | **done** | Session I (`phase-5a`) | `src/ui/demo.js` | PUTs fresh seed to `/api/state` + clears localStorage + reload → pristine login. Verified: injected work order wiped from both server and localStorage |
+| 5-3 | Guided tour mode | **done** | Session I (`phase-5a`) | `src/ui/demo.js` | 6-step overlay: komuta → QR kilidi → denetim uyarıları → raporlar → uyumluluk → trendler. Navigates views + spotlights nav |
+| 5-4 | Fast role switching | **done** | Session I (`phase-5a`) | `core/auth.js`, `src/ui/demo.js` | `switchRole()` in auth.js; presenter-bar segmented control, no re-login. Verified admin↔tech↔client |
 
 ---
 
@@ -115,6 +115,7 @@ python scripts/checkimports.py
 It flags any module referencing an exported symbol it never imports. The
 pattern also matches comments and strings, so the false-positive list grows as
 the codebase does — fifteen as of Phase 4a:
+the codebase does — eleven as of Phase 5a:
 
 | File | Symbol | Why it is spurious |
 |---|---|---|
@@ -126,6 +127,7 @@ the codebase does — fifteen as of Phase 4a:
 | `views/reports.js` | `render`, `modal`, `state` | comment, the `'#modal'` selector string, and the `te-cov-state` class name |
 | `data/billing.js` | `state`, `renderFinance` | both in comments |
 | `views/finance.js` | `render`, `ui`, `modal` | comments and the `'#modal'` selector string |
+| `ui/demo.js` | `modal` | the `$('#modal')` selector string |
 
 Anything beyond these is real — but confirm before believing it. Print the hit
 in context rather than trusting the count:

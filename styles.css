@@ -2784,4 +2784,136 @@ tr.rec-row-selected > td { background: #eef4ff !important; }
   .bill-table tr { break-inside: avoid; page-break-inside: avoid; }
   .bill-totals, .bill-signs { break-inside: avoid; page-break-inside: avoid; }
   .bill-totals-box { background: #fafafa !important; }
+/* ===== Phase 5: demo polish — presenter bar, tour, notif badge (4-4/5-2/5-3/5-4) ===== */
+
+/* Notification badge on the topbar bell (4-4). */
+.topbar .notification { position: relative; }
+.notif-badge {
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  min-width: 15px;
+  height: 15px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--red);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 800;
+  line-height: 15px;
+  text-align: center;
+  box-shadow: 0 0 0 2px var(--bg, #fff);
+}
+.feed-icon.success { background: #dcfce7; color: #15803d; }
+
+/* Presenter control strip (5-2 / 5-3 / 5-4). Fixed bottom-left, sits under
+   modals and the tour overlay. Lives inside .app-shell so logout hides it. */
+.presenter-bar {
+  position: fixed;
+  left: 14px;
+  bottom: 14px;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  background: #18181b;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.28);
+}
+.presenter-tag {
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  color: #8b93a1;
+  padding-left: 2px;
+}
+.presenter-bar .role-switch {
+  display: inline-flex;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 7px;
+  padding: 2px;
+  gap: 2px;
+}
+.presenter-bar .role-switch button {
+  border: none;
+  background: transparent;
+  color: #c7ccd4;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 9px;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.presenter-bar .role-switch button:hover { color: #fff; }
+.presenter-bar .role-switch button.active {
+  background: #fff;
+  color: #18181b;
+}
+.presenter-btn {
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.05);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 5px 10px;
+  border-radius: 7px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.presenter-btn:hover { background: rgba(255, 255, 255, 0.14); }
+
+/* Sidebar nav item spotlighted by the guided tour. */
+.nav-item.tour-lit {
+  background: rgba(37, 99, 235, 0.16);
+  box-shadow: inset 2px 0 0 var(--blue);
+}
+
+/* Guided tour overlay (5-3): dim backdrop + bottom-centred narration card. */
+.tour-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  background: rgba(9, 9, 11, 0.42);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 0 16px 32px;
+  /* Only the card should catch clicks; the scrim stays visually dimmed but the
+     view behind updates as steps advance. */
+  pointer-events: none;
+}
+.tour-overlay.hidden { display: none; }
+.tour-card {
+  pointer-events: auto;
+  width: min(520px, 100%);
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 18px 20px;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.32);
+}
+.tour-progress { display: flex; gap: 5px; margin-bottom: 10px; }
+.tour-progress i {
+  height: 4px;
+  flex: 1;
+  border-radius: 2px;
+  background: var(--line);
+}
+.tour-progress i.active { background: var(--blue); }
+.tour-step-count {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+.tour-card h3 { margin: 6px 0 8px; font-size: 17px; font-weight: 800; }
+.tour-card p { font-size: 13px; line-height: 1.5; color: var(--muted); margin-bottom: 16px; }
+.tour-nav { display: flex; justify-content: space-between; align-items: center; }
+
+@media (max-width: 640px) {
+  .presenter-bar { left: 8px; right: 8px; bottom: 8px; justify-content: center; flex-wrap: wrap; }
 }

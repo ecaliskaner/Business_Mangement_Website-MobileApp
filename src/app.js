@@ -32,6 +32,7 @@ import { insightsClicks } from './views/insights.js';
 import { invoiceActionClicks, invoiceFilterClicks, billingClicks } from './views/finance.js';
 import { stockRefillSubmit } from './views/inventory.js';
 import { createSiteSubmit } from './views/sites.js';
+import { demoClicks, openNotificationCenter, updateNotifBadge, mountPresenterBar } from './ui/demo.js';
 
 // Clean stale data from previous versions
 localStorage.removeItem("ladybug-product-demo"); localStorage.removeItem("insectram-product-demo"); localStorage.removeItem("insectram-ops");
@@ -53,6 +54,8 @@ export function shellClicks(e) {
       localStorage.setItem("ladybug-user", JSON.stringify(state.currentUser));
       checkSession();
       render();
+      mountPresenterBar();
+      updateNotifBadge();
       toast(`Hoş geldiniz, ${state.currentUser.name}!`);
       return true;
     }
@@ -67,7 +70,7 @@ export function shellClicks(e) {
         return true;
       }
       if (action === 'notifications') {
-        modal('notifications');
+        openNotificationCenter();
         return true;
       }
       if (action === 'workspace') {
@@ -201,6 +204,8 @@ export function loginSubmit(e) {
         localStorage.setItem("ladybug-user", JSON.stringify(state.currentUser));
         checkSession();
         render();
+        mountPresenterBar();
+        updateNotifBadge();
         toast(`Başarıyla giriş yapıldı. Hoş geldiniz, ${user.name}!`);
       } else {
         toast('Hata: Geçersiz e-posta veya şifre (Şifre: 123)');
@@ -214,6 +219,7 @@ export function loginSubmit(e) {
 // original single delegator, including blocks that deliberately fall through
 // to later ones. A handler returns true to stop processing the event.
 const CLICK_CHAIN = [
+  demoClicks,
   shellClicks,
   workListClicks,
   teamRosterClicks,
@@ -284,3 +290,5 @@ Object.assign(window, { showStationDetail, switchCompanyTab });
 bind();
 checkSession();
 render();
+mountPresenterBar();
+updateNotifBadge();

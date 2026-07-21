@@ -79,7 +79,8 @@ Update this table when you claim or release files.
 
 | Area | Files | Owner | Status |
 |---|---|---|---|
-| Core / bootstrap | `src/app.js`, `src/core/auth.js` | Session I | **claimed (phase-5a)** — 4-4/5-2/5-3/5-4. G+H add 1-line chain entries only |
+| Core / bootstrap | `src/app.js`, `src/core/auth.js` | — | released — 4-4/5-2/5-3/5-4 landed on `phase-5a`. `demoClicks` sits first in CLICK_CHAIN; G+H one-liners merge below it |
+| Demo controls | `src/ui/demo.js` | — | released — greenfield; notif centre, reset, tour, role-switch handler. Bell now routes here, not `modal.js` |
 | Catalog data | `src/data/catalog.js` | — | free — 1-1/1-3/1-4/1-5/1-7 landed on `phase-1a` |
 | Seed + history | `src/data/seed.js`, `src/data/history.js` | — | free — 0b on `phase-0b`, 1-2/1-6 on `phase-1b`; `recommendationStats()` extended additively (`stage` field) |
 | Compliance standards | `src/data/compliance.js` | — | free (new in 1c; readiness thresholds are calibrated to the history seed) |
