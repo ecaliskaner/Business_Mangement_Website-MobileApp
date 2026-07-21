@@ -79,7 +79,7 @@ Update this table when you claim or release files.
 
 | Area | Files | Owner | Status |
 |---|---|---|---|
-| Core / bootstrap | `src/core/**`, `src/app.js` | — | free |
+| Core / bootstrap | `src/app.js`, `src/core/auth.js` | Session I | **claimed (phase-5a)** — 4-4/5-2/5-3/5-4. G+H add 1-line chain entries only |
 | Catalog data | `src/data/catalog.js` | — | free — 1-1/1-3/1-4/1-5/1-7 landed on `phase-1a` |
 | Seed + history | `src/data/seed.js`, `src/data/history.js` | — | free — 0b on `phase-0b`, 1-2/1-6 on `phase-1b`; `recommendationStats()` extended additively (`stage` field) |
 | Compliance standards | `src/data/compliance.js` | — | free (new in 1c; readiness thresholds are calibrated to the history seed) |
@@ -88,14 +88,14 @@ Update this table when you claim or release files.
 | Signature | `src/ui/signature.js` | — | free — 1-1/1-3/1-4/1-5/1-7 landed on `phase-1a` |
 | Dashboard | `src/views/dashboard.js` | — | free |
 | Sites | `src/views/sites.js` | — | free |
-| Work orders | `src/views/work.js` | — | free |
-| Team | `src/views/team.js` | — | free |
+| Work orders | `src/views/work.js` | Session G | **claimed (phase-3a)** — 3-6 audit warnings |
+| Team | `src/views/team.js` | Session G | **claimed (phase-3a)** — 2-5/3-1/3-2/3-5 |
 | Insights | `src/views/insights.js` | — | free — 0b-2 on `phase-0b`, 2-1/2-2/2-3 on `phase-2a` |
 | Reports | `src/views/reports.js`, `src/views/reportBodies.js` | — | free — 1-8/2-4/5-1 landed on `phase-1c` |
 | Company detail | `src/views/companyDetail.js` | — | free — 1-1/1-3/1-4/1-5/1-7 on `phase-1a`, 1-2/1-6 on `phase-1b` |
-| Mobile | `src/views/mobile.js` | — | free — 1-1/1-3/1-4/1-5/1-7 landed on `phase-1a` |
+| Mobile | `src/views/mobile.js` | Session G | **claimed (phase-3a)** — 3-2/3-3/3-4 (offline queue self-contained here) |
 | Inventory | `src/views/inventory.js` | — | free |
-| Finance | `src/views/finance.js` | — | free |
+| Finance | `src/views/finance.js` | Session H | **claimed (phase-4a)** — 4-1/4-3 |
 
 ---
 
@@ -284,9 +284,125 @@ The three sessions below touch disjoint files. All branch from `main` at
 > (`git worktree add ../Bug-phase2a -b phase-2a`), and use the
 > `pestops-4176` launch config so ports don't clash.
 
-### Wave 3 (after Wave 2 lands)
+## Wave 3 — ready now (all of Phase 0–2 is on `main` at `2afdc54`)
 
-Phase 3 field realism (3-1…3-6, team + mobile + work), Phase 4 business layer
-(4-1…4-4, finance), Phase 5 hardening (5-2 demo reset, 5-3 guided tour, 5-4
-fast role switching). 3-x and 4-x are a good parallel pair; 5-3 guided tour
-should run **alone** — it touches the shell.
+Three sessions, disjoint file ownership. All branch from `main` and run in git
+worktrees on their own ports.
+
+**File map (no overlap):**
+- **G** owns `views/team.js`, `views/mobile.js`, `views/work.js` — field realism.
+- **H** owns `views/finance.js` — business layer.
+- **I** owns `src/app.js`, `src/core/auth.js` — shell + demo polish.
+
+**The one shared edge — `src/app.js`.** G and H each add new event handlers, so
+each needs to register them in `CLICK_CHAIN` / `SUBMIT_CHAIN`. Session I *owns*
+`app.js` and will be restructuring the shell. Rule for this wave: **G and H
+touch `app.js` only to add their handler names — one line per handler, nothing
+else.** I keeps its own additions grouped so those one-liners merge cleanly.
+Everything else stays in each session's own view module.
+
+`4-2` (travel-vs-on-site efficiency) is intentionally **not** in this wave: it
+spans `team.js` (G) and `finance.js` (H). It becomes a clean one-session task
+in Wave 4 once both have landed.
+
+### Session G — field realism (tasks 2-5, 3-1 … 3-6)
+
+> Read `docs/PLAN.md`, `docs/TASKS.md`, `docs/SESSIONS.md` and
+> `docs/COMPETITOR.md` first. Phase 3 is the "and more" that beats Insectram —
+> it turns the existing first-QR lock into an audit story they don't tell.
+>
+> You own tasks **2-5, 3-1, 3-2, 3-3, 3-4, 3-5, 3-6**. Claim them in
+> `docs/TASKS.md` and claim `src/views/team.js`, `src/views/mobile.js` and
+> `src/views/work.js` in the ownership registry.
+>
+> Build: a **live technician map with simulated GPS movement** (technicians
+> drift along a route on a timer); **geofence enter/exit events** firing
+> visibly as a tech crosses a site boundary; **offline sync simulation** — a
+> toggle that queues records with a live count badge, and a reconnect that
+> visibly drains the queue (keep the queue self-contained in `mobile.js`; do
+> **not** modify `core/state.js` — a simulated in-memory queue is the demo we
+> want); **NFC scan alongside QR** on the mobile flow (Insectram parity);
+> **route optimization before/after** (show the naive route, then the optimized
+> one with time saved); **audit warnings** on the work view (GPS-arrival but no
+> QR, QR scanned outside the geofence, suspiciously short visit); and
+> **technician credential cards** on the team view — *placeholder documents and
+> a KVKK privacy notice only, never real personal data*.
+>
+> The seeded history in `src/data/history.js` gives you real visits, GPS-style
+> timings and per-tech stats (`technicianStats()`, `getVisits()`) — drive the
+> map and audit warnings off that, not fresh random data.
+>
+> Constraints: this is a **pitch demo** — no backend, simulation is fine, but
+> every feature must visibly work. Add handlers to the chains in `src/app.js`
+> **one line each** at the position matching where they should run — nothing
+> else in that file (Session I owns it this wave). `styles.css` is append-only
+> inside your own banner comment. Run `python scripts/checkimports.py` and
+> verify in the browser before committing. Work on branch `phase-3a` in a git
+> worktree (`git worktree add ../Bug-phase3a -b phase-3a`); use the
+> `pestops-4174` launch config.
+
+### Session H — business layer (tasks 4-1, 4-3)
+
+> Read `docs/PLAN.md`, `docs/TASKS.md` and `docs/SESSIONS.md` first.
+>
+> You own tasks **4-1 and 4-3**. Claim them in `docs/TASKS.md` and claim
+> `src/views/finance.js` in the ownership registry.
+>
+> Build: **auto-irsaliye (delivery note) generation** — produce a numbered,
+> printable irsaliye from a completed visit's chemical usage; and **invoice
+> generation from completed visits** — turn one or more completed visits into a
+> line-itemed invoice with the margin-per-visit figures we already compute.
+> Some invoice scaffolding already exists in `finance.js` — extend it, don't
+> replace it.
+>
+> Use the real data: completed visits and chemical applications come from
+> `src/data/history.js` (`getVisits()`, `chemicalStats()`); print with
+> `printElement()` and export rows with `downloadCSV()` from `src/ui/export.js`
+> (consume only — do not edit that file). Numbering must be deterministic so a
+> re-run of the demo shows the same document numbers.
+>
+> Constraints: this is a **pitch demo** — no backend, simulation is fine, but
+> every feature must visibly work. If you add a handler, register it in the
+> `src/app.js` chain **one line only** (Session I owns that file this wave).
+> `styles.css` is append-only inside your own banner comment; reuse the
+> existing `ct-printing` print pattern. Run `python scripts/checkimports.py`
+> and verify in the browser before committing. Work on branch `phase-4a` in a
+> git worktree (`git worktree add ../Bug-phase4a -b phase-4a`); use the
+> `pestops-4175` launch config.
+
+### Session I — demo polish (tasks 4-4, 5-2, 5-3, 5-4)
+
+> Read `docs/PLAN.md`, `docs/TASKS.md` and `docs/SESSIONS.md` first. This
+> session makes the demo smooth to *present* — it owns the shell.
+>
+> You own tasks **4-4, 5-2, 5-3, 5-4**. Claim them in `docs/TASKS.md` and claim
+> `src/app.js` and `src/core/auth.js` in the ownership registry.
+>
+> Build: a **notification centre** with a simulated "report emailed to
+> customer" event (the notification model already exists via
+> `window.__ACTIVE_NOTIFS__` — extend it); **one-click demo reset** that clears
+> `localStorage` *and* the server state (`data/state.json` + `state.js`) and
+> reloads to a pristine seed — see the reset note in `docs/TASKS.md`, all three
+> must be cleared or the app restores half-finished work orders; **guided tour
+> mode** that walks the pitch narrative step by step (first-QR lock → audit
+> warnings → reports → compliance); and **fast role switching** so the presenter
+> flips admin ↔ technician ↔ client with no re-login (`core/auth.js` already
+> holds the three demo accounts).
+>
+> You are the shell owner this wave: Sessions G and H will each add a few
+> one-line handler registrations to `CLICK_CHAIN` / `SUBMIT_CHAIN`. Keep your
+> own `app.js` changes grouped and avoid reordering the existing chain, so
+> those one-liners stay trivial to merge.
+>
+> Constraints: this is a **pitch demo** — no backend, simulation is fine, but
+> every feature must visibly work. `styles.css` is append-only inside your own
+> banner comment. Run `python scripts/checkimports.py` and verify in the
+> browser before committing. Work on branch `phase-5a` in a git worktree
+> (`git worktree add ../Bug-phase5a -b phase-5a`); use the `pestops-4176`
+> launch config.
+
+### Wave 4 (after Wave 3 lands)
+
+`4-2` travel-vs-on-site efficiency (team + finance, now both free) · any
+polish surfaced during Wave 3 · a final integrated dry-run of the full pitch
+narrative end to end.

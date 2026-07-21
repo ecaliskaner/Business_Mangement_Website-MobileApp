@@ -46,36 +46,36 @@ Claim a task by putting your session name in Owner, and claim its files in
 | 2-2 | Multi-select chart filters + per-chart download | **done** | Session F (`phase-2a`) | `views/insights.js` | Pest-type chips drive every chart; SVG+PNG button pair on all 5 charts. `charts.js` needed no change |
 | 2-3 | Recommendation statistics | **done** | Session F (`phase-2a`) | `views/insights.js` | Funnel açılan/aksiyon/onaylı + category donut + per-location close rate |
 | 2-4 | 3rd Eye audit section | **done** | Session E | `views/reports.js` | Visit type `3G` was already in the catalog — reads real audits plus per-site coverage |
-| 2-5 | Technician credential cards | todo | — | `views/team.js` | **Placeholder docs + KVKK notice only** |
+| 2-5 | Technician credential cards | todo | Session G (`phase-3a`) | `views/team.js` | **Placeholder docs + KVKK notice only** |
 
 ## Phase 3 — Field realism
 
 | ID | Task | Status | Owner | Files | Notes |
 |---|---|---|---|---|---|
-| 3-1 | Live technician map, simulated GPS | todo | — | `views/team.js` | |
-| 3-2 | Geofence enter/exit events | todo | — | `views/team.js`, `views/mobile.js` | |
-| 3-3 | Offline sync simulation | todo | — | `core/state.js`, `views/mobile.js` | Queue badge → visible drain |
-| 3-4 | NFC scan alongside QR | todo | — | `views/mobile.js` | Insectram parity |
-| 3-5 | Route optimization before/after | todo | — | `views/team.js` | |
-| 3-6 | Audit warnings | todo | — | `views/work.js` | GPS-no-QR, QR outside fence, short visit |
+| 3-1 | Live technician map, simulated GPS | todo | Session G (`phase-3a`) | `views/team.js` | |
+| 3-2 | Geofence enter/exit events | todo | Session G (`phase-3a`) | `views/team.js`, `views/mobile.js` | |
+| 3-3 | Offline sync simulation | todo | Session G (`phase-3a`) | `views/mobile.js` | Queue badge → visible drain. Simulated in-memory queue — **no** `core/state.js` change |
+| 3-4 | NFC scan alongside QR | todo | Session G (`phase-3a`) | `views/mobile.js` | Insectram parity |
+| 3-5 | Route optimization before/after | todo | Session G (`phase-3a`) | `views/team.js` | |
+| 3-6 | Audit warnings | todo | Session G (`phase-3a`) | `views/work.js` | GPS-no-QR, QR outside fence, short visit |
 
 ## Phase 4 — Business layer
 
 | ID | Task | Status | Owner | Files | Notes |
 |---|---|---|---|---|---|
-| 4-1 | Auto-irsaliye generation | todo | — | `views/finance.js` | |
-| 4-2 | Travel vs on-site time, efficiency | todo | — | `views/team.js`, `views/finance.js` | |
-| 4-3 | Invoice from completed visits | todo | — | `views/finance.js` | Partially exists |
-| 4-4 | Notification centre + "report emailed" | todo | — | `src/app.js` | |
+| 4-1 | Auto-irsaliye generation | todo | Session H (`phase-4a`) | `views/finance.js` | |
+| 4-2 | Travel vs on-site time, efficiency | todo | — | `views/team.js`, `views/finance.js` | **Wave 4** — spans G+H, deferred until both land |
+| 4-3 | Invoice from completed visits | todo | Session H (`phase-4a`) | `views/finance.js` | Partially exists |
+| 4-4 | Notification centre + "report emailed" | todo | Session I (`phase-5a`) | `src/app.js` | |
 
 ## Phase 5 — Hardening
 
 | ID | Task | Status | Owner | Files | Notes |
 |---|---|---|---|---|---|
 | 5-1 | Compliance badges | **done** | Session E | `data/compliance.js`, `views/reports.js` | Readiness computed from history, not decorative. Red Tractor is honestly out of scope |
-| 5-2 | One-click demo reset | todo | — | `src/app.js` | |
-| 5-3 | Guided tour mode | todo | — | `src/app.js` | Walks the pitch narrative |
-| 5-4 | Fast role switching | todo | — | `core/auth.js` | No re-login during demo |
+| 5-2 | One-click demo reset | todo | Session I (`phase-5a`) | `src/app.js` | |
+| 5-3 | Guided tour mode | todo | Session I (`phase-5a`) | `src/app.js` | Walks the pitch narrative |
+| 5-4 | Fast role switching | todo | Session I (`phase-5a`) | `core/auth.js` | No re-login during demo |
 
 ---
 
