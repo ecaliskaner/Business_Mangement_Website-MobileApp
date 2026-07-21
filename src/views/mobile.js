@@ -229,6 +229,11 @@ export function showMobileJobDetail(work) {
 // Shared completion for the entry QR / NFC step — both routes register the same
 // real-work-start, differing only in the method label they log (task 3-4).
 export function startFirstScan(scannedCode, method) {
+  // The QR-camera success callback and the NFC button are both async: the job
+  // can be cleared (demo reset, role switch, navigating off the sim) between
+  // arming the scan and this firing. Without the guard that lands as an
+  // "Cannot set properties of null" crash mid-demo.
+  if (!ui.mobJob) return;
   ui.mobQrStarted = true;
   ui.mobJob.status = 'started_by_first_qr';
   ui.mobJob.startMethod = method;
@@ -709,6 +714,10 @@ export function mobileClicks(e) {
         if (gpsSettled) return true;
         gpsSettled = true;
         clearTimeout(gpsWatchdog);
+        // The 2.5s watchdog (or a late geolocation callback) can fire after the
+        // job was cleared by a reset / role switch / navigation — guard the
+        // write so it degrades to a no-op instead of throwing.
+        if (!ui.mobJob) return true;
         ui.mobArrived = true;
         ui.mobJob.status = 'arrived_gps';
         save();
