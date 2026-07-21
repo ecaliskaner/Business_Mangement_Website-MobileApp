@@ -403,8 +403,55 @@ in Wave 4 once both have landed.
 > (`git worktree add ../Bug-phase5a -b phase-5a`); use the `pestops-4176`
 > launch config.
 
-### Wave 4 (after Wave 3 lands)
+## Wave 4 — ready now (all of Phase 0–5 is on `main` at `6e4b199`)
 
-`4-2` travel-vs-on-site efficiency (team + finance, now both free) · any
-polish surfaced during Wave 3 · a final integrated dry-run of the full pitch
-narrative end to end.
+One session, not three. Every roadmap feature except `4-2` has landed, and
+what remains — the last feature plus a whole-app polish/QA pass — does not
+parallelise: `4-2` spans `team.js` + `finance.js`, and the dry-run needs the
+whole app in one head. Run it **alone** (no other session active), on
+`main` directly or a single `phase-6` worktree.
+
+### Session J — finisher: last feature + pitch-ready polish
+
+> Read `docs/PLAN.md`, `docs/TASKS.md`, `docs/SESSIONS.md` and
+> `docs/COMPETITOR.md` first. The build is feature-complete except one task;
+> your job is to land it and make the whole thing presentable end to end.
+>
+> **1. Task 4-2 — travel-vs-on-site time & technician efficiency.** Own
+> `views/team.js` and `views/finance.js` (both free now). Drive it off the real
+> data already in `src/data/history.js`: `technicianStats()` gives per-tech
+> `avgOnSiteMin` / `avgTravelMin` / visit counts; surface a productivity view on
+> the team side (travel vs on-site split, utilisation) and roll the cost angle
+> into `finance.js` next to the margin figures. No new data layer — consume
+> `history.js` and `charts.js` as-is.
+>
+> **2. Polish pass (things surfaced during integration):**
+> - `modal('notifications')` in `src/ui/modal.js` is dead after 4-4 rerouted the
+>   bell to `openNotificationCenter()` — remove it, or point it at the new
+>   centre. Confirm nothing else calls it first.
+> - Sweep the async field callbacks in `views/mobile.js` for the same
+>   null-`ui.mobJob` pattern already guarded in `startFirstScan()` /
+>   `proceedGpsArrival()` (fixed in `6e4b199`) — the chemical-save and
+>   station-status paths run after camera/GPS latency too.
+> - Run `python scripts/checkimports.py`; the ~16 flags are all known false
+>   positives (comments, `$('#modal')` selectors, `ui/` import paths). If you
+>   want it quiet, teach the script to strip `//` comments and string literals —
+>   optional, not required.
+>
+> **3. Full pitch dry-run.** Walk the guided tour (🎬 Tur) end to end as each
+> role via the presenter bar, exercise one-click reset between runs, and confirm
+> the narrative holds: first-QR lock → GPS/geofence audit trail → live map →
+> reports → compliance badges → invoicing. Fix whatever reads rough. Reset demo
+> state before finishing (`rm -f data/state.json state.js` + `localStorage`).
+>
+> Constraints: **pitch demo** — no backend, simulation is fine, every feature
+> visibly works. `styles.css` append-only under a banner. Handlers into the
+> `src/app.js` chain one line each. Verify in the browser before committing.
+> Run alone; work on `main` or a single `phase-6` worktree.
+
+### After Wave 4
+
+The roadmap is complete. Anything beyond this is stretch: real backend
+persistence, the reports the `.docx` lists but we scoped out (see the
+`docs/PLAN.md` phase-1 note), or Insectram-parity items we chose not to build
+(NFC is done; automatic report *email delivery* is simulated, not real).
