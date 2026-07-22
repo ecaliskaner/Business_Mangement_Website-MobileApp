@@ -11,6 +11,7 @@ import { state } from '../core/state.js';
 import { save } from '../core/state.js';
 import { techData, techSites, initial } from '../data/seed.js';
 import { technicianStats } from '../data/history.js';
+import { stackedBarChart, mountChart } from '../ui/charts.js';
 
 // ---- map geography (abstract canvas %, not real coordinates) ----
 
@@ -316,6 +317,76 @@ function renderCredentials(tech) {
     ilgili müşteriye ve yalnızca hizmet süresince gösterilir.</p>`;
 }
 
+// ---- productivity: travel vs on-site time & efficiency (task 4-2) ----
+//
+// Reads the seeded 12-month history through technicianStats() — real per-tech
+// visit counts and on-site / travel minute totals — and turns them into the
+// utilisation story: how much of each technician's working time is billable
+// time on the customer's site versus unbillable "windshield" travel. The cost
+// side of the same numbers lives in views/finance.js next to the margins.
+
+const firstName = (name) => name.split(' ')[0];
+const hours = (min) => Math.round(min / 60);
+// Share of working time spent on-site rather than driving. Higher is better.
+const utilisation = (t) => Math.round((t.onSiteMin / (t.onSiteMin + t.travelMin)) * 100);
+const utilClass = (u) => (u >= 70 ? 'ok' : u >= 60 ? 'mid' : 'low');
+
+function renderProductivity() {
+  const body = $('#teamProductivityBody');
+  if (!body) return;
+
+  const stats = technicianStats();
+  const totalOn = stats.reduce((s, t) => s + t.onSiteMin, 0);
+  const totalTravel = stats.reduce((s, t) => s + t.travelMin, 0);
+  const totalVisits = stats.reduce((s, t) => s + t.visits, 0);
+  const teamUtil = totalOn + totalTravel ? Math.round((totalOn / (totalOn + totalTravel)) * 100) : 0;
+
+  const pill = $('#teamUtilPill');
+  if (pill) {
+    pill.textContent = `Ekip verimliliği %${teamUtil}`;
+    pill.className = `status-chip ${teamUtil >= 70 ? 'healthy' : teamUtil >= 60 ? 'warning' : 'blue'}`;
+  }
+
+  const rows = stats.map((t) => {
+    const u = utilisation(t);
+    const sel = t.tech === state.selectedTech ? ' selected' : '';
+    return `
+      <div class="prod-row${sel}" data-tech="${t.tech}">
+        <div class="prod-row-head">
+          <span class="tech-avatar" style="background:${(techData[t.tech] || [])[5] || '#eee'}">${(techData[t.tech] || ['--'])[0]}</span>
+          <div class="prod-row-id"><b>${t.tech}</b><small>${t.visits} ziyaret · ort. saha ${t.avgOnSiteMin} dk · ort. yol ${t.avgTravelMin} dk</small></div>
+          <span class="prod-util ${utilClass(u)}">%${u}</span>
+        </div>
+        <div class="prod-bar" title="Saha ${hours(t.onSiteMin)} sa · Yol ${hours(t.travelMin)} sa">
+          <span class="prod-bar-on" style="width:${u}%"></span>
+          <span class="prod-bar-travel" style="width:${100 - u}%"></span>
+        </div>
+      </div>`;
+  }).join('');
+
+  body.innerHTML = `
+    <div class="prod-summary">
+      <div class="prod-stat"><span>Ekip verimliliği</span><strong class="${teamUtil >= 70 ? 'good' : teamUtil >= 60 ? 'mid' : 'bad'}">%${teamUtil}</strong><small>saha / toplam mesai</small></div>
+      <div class="prod-stat"><span>Toplam saha süresi</span><strong>${hours(totalOn)} sa</strong><small>faturalanabilir</small></div>
+      <div class="prod-stat"><span>Toplam yol süresi</span><strong>${hours(totalTravel)} sa</strong><small>windshield / gayri-faturalı</small></div>
+      <div class="prod-stat"><span>Toplam ziyaret</span><strong>${totalVisits}</strong><small>12 ay</small></div>
+    </div>
+    <div class="prod-chart-wrap"><div id="teamProductivityChart" class="prod-chart"></div></div>
+    <div class="prod-legend"><span><i class="on"></i> Saha (faturalanabilir)</span><span><i class="travel"></i> Yol (windshield)</span></div>
+    <div class="prod-rows">${rows}</div>`;
+
+  mountChart('#teamProductivityChart', stackedBarChart({
+    labels: stats.map((t) => firstName(t.tech)),
+    series: [
+      { name: 'Saha', values: stats.map((t) => hours(t.onSiteMin)), color: '#10b981' },
+      { name: 'Yol', values: stats.map((t) => hours(t.travelMin)), color: '#f59e0b' }
+    ],
+    height: 220,
+    legend: false,
+    format: (n) => `${n} sa`
+  }));
+}
+
 // ---- main view rendering ----
 
 export function renderTeam(){
@@ -348,6 +419,7 @@ export function renderTeam(){
 
   renderCredentials(state.selectedTech);
   renderRouteOptimization();
+  renderProductivity();
   startFieldSimulation();
 }
 

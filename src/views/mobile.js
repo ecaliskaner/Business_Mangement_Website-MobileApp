@@ -823,6 +823,10 @@ export function mobileClicks(e) {
         if (progress >= 100) {
           clearInterval(interval);
           setTimeout(() => {
+            // This fires ~800ms after the click; the job can be cleared by a
+            // demo reset / role switch / navigating off the sim in the meantime
+            // (same latency guard as startFirstScan / proceedGpsArrival).
+            if (!ui.mobJob) return;
             ui.mobOfflineReady = true;
             const site = state.sites.find(s => s.id === ui.mobJob.siteId);
             if (site) site.downloaded = true;
@@ -864,6 +868,9 @@ export function mobileClicks(e) {
     }
 
     if (e.target.id === 'btnMobSaveInspection') {
+      // The inspection form can outlive its job (reset / role switch / nav);
+      // never write a station status back through a null job.
+      if (!ui.mobJob) return true;
       const site = state.sites.find(s => s.id === ui.mobJob.siteId) || state.sites[0];
       const s = site.stations.find(st => st.code === ui.activeMobileStationCode);
       if (s) {
@@ -915,6 +922,9 @@ export function mobileClicks(e) {
     }
     
     if (e.target.id === 'btnMobSaveForm') {
+      // The visit-close path writes through ui.mobJob repeatedly; if the job was
+      // cleared (reset / role switch / nav) since the form opened, bail cleanly.
+      if (!ui.mobJob) return true;
       // Defence in depth: the button is already disabled without both
       // signatures, but never close a visit on an unsigned pad.
       if (!bothSigned()) {

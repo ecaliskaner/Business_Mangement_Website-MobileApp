@@ -64,7 +64,7 @@ Claim a task by putting your session name in Owner, and claim its files in
 | ID | Task | Status | Owner | Files | Notes |
 |---|---|---|---|---|---|
 | 4-1 | Auto-irsaliye generation | **done** | Session H | `views/finance.js`, `data/billing.js` | Numbered sevk irsaliyesi per visit's chemical usage; deterministic IRS-YYYY-NNNNNN |
-| 4-2 | Travel vs on-site time, efficiency | todo | Session J (`phase-6`) | `views/team.js`, `views/finance.js` | **Wave 4 finisher** — last feature; `technicianStats()` has avgOnSite/avgTravel |
+| 4-2 | Travel vs on-site time, efficiency | **done** | Session J (`main`) | `views/team.js`, `views/finance.js` | **Wave 4 finisher** — team productivity panel (util % + on-site/travel split) and finance windshield-cost panel, both off `technicianStats()`. Verified: team util %75, windshield ₺16.6k (%24 of labour), figures agree across both views |
 | 4-3 | Invoice from completed visits | **done** | Session H | `views/finance.js`, `data/billing.js` | Consolidated per site+month, line item per visit, KDV + margin; flows into existing ledger |
 | 4-4 | Notification centre + "report emailed" | **done** | Session I (`phase-5a`) | `src/app.js`, `src/ui/demo.js` | Bell badge + centre; simulated e-mail event pushes to `window.__DEMO_NOTIFS__`. Bell reroutes to `openNotificationCenter()` — `modal('notifications')` in `modal.js` is now unused |
 

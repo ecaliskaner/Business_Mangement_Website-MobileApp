@@ -4,10 +4,8 @@
 import { $, toast } from '../core/dom.js';
 import { save, state } from '../core/state.js';
 import { ui } from '../core/session.js';
-import { setView } from '../core/router.js';
 import { renderDashboard } from '../views/dashboard.js';
 import { renderWork } from '../views/work.js';
-import { showCompanyDetail } from '../views/companyDetail.js';
 import { renderCalendarGrid } from '../ui/calendar.js';
 
 export function modal(type, siteId = null) {
@@ -333,74 +331,11 @@ export function modal(type, siteId = null) {
         resultsDiv.innerHTML = html || '<p class="text-muted" style="font-size:11px; text-align:center; padding:10px;">Eşleşen sonuç bulunamadı.</p>';
       });
     }, 100);
-  } else if (type === 'notifications') {
-    const notifications = [];
-    
-    // Critical risk sites
-    state.sites.forEach(s => {
-      if (s.state === 'risk') {
-        notifications.push({
-          title: `Kritik Risk Seviyesi: ${s.company}`,
-          desc: `${s.name} tesisinde açık bulgu skoru kritik limitlerin altına düştü (${s.score}/100)`,
-          time: '3 saat önce',
-          type: 'alert',
-          action: () => showCompanyDetail(s.id)
-        });
-      }
-    });
-    
-    // Inventory low stock warnings
-    state.inventory.forEach(item => {
-      if (item.qty <= item.minQty) {
-        notifications.push({
-          title: `Stok İkazı: ${item.name}`,
-          desc: `Kritik depo seviyesine ulaşıldı! Kalan: ${item.qty} ${item.unit} (Eşik: ${item.minQty})`,
-          time: 'Bugün',
-          type: 'warning',
-          action: () => setView('inventory')
-        });
-      }
-    });
-    
-    // Open urgent tasks
-    state.work.forEach(w => {
-      if (w.priority === 'critical' && !w.completed) {
-        notifications.push({
-          title: `Acil / Kritik İş Emri: ${w.id}`,
-          desc: `${w.title} servisi bugün için planlandı. Teknisyen: ${w.tech}`,
-          time: '2 saat önce',
-          type: 'info',
-          action: () => {
-            state.selectedWork = w.id;
-            save();
-            setView('work');
-          }
-        });
-      }
-    });
-
-    content.innerHTML = `
-      <h2>Sistem Bildirimleri</h2>
-      <p class="text-muted" style="margin-bottom:14px;">Operasyonel riskler, stok uyarıları ve yaklaşan kritik görevler.</p>
-      <div style="display:grid; gap:10px; max-height:350px; overflow:auto;">
-        ${notifications.map((n, i) => `
-          <div class="notification-row" data-notif-idx="${i}" style="padding:10px; background:var(--soft); border:1px solid var(--line); border-radius:8px; cursor:pointer; display:flex; gap:10px; align-items:start; transition:all 0.2s;">
-            <span class="feed-icon ${n.type}" style="margin:0; font-size:12px; width:22px; height:22px; display:flex; align-items:center; justify-content:center; border-radius:50%;">${n.type === 'alert' ? '!' : (n.type === 'warning' ? '⚠' : '✓')}</span>
-            <div style="flex:1;">
-              <div style="display:flex; justify-content:space-between; align-items:center; font-size:12px; font-weight:700;">
-                <span>${n.title}</span>
-                <span class="text-muted" style="font-size:10px; font-weight:normal;">${n.time}</span>
-              </div>
-              <p style="font-size:11px; color:var(--muted); margin-top:2px;">${n.desc}</p>
-            </div>
-          </div>
-        `).join('') || '<p class="empty" style="text-align:center;">Şu anda okunmamış operasyonel bildiriminiz bulunmamıyor.</p>'}
-      </div>
-    `;
-    
-    window.__ACTIVE_NOTIFS__ = notifications;
   }
-  
+  // NOTE: the old type === 'notifications' branch was removed in Wave 4. The
+  // bell now opens the notification centre owned by ui/demo.js instead, so
+  // nothing calls modal('notifications') any more.
+
   modalEl.classList.remove('hidden');
 }
 

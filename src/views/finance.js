@@ -10,11 +10,12 @@ import { $ } from '../core/dom.js';
 import { state } from '../core/state.js';
 import { $$, toast } from '../core/dom.js';
 import { save } from '../core/state.js';
-import { getMonths, getVisits } from '../data/history.js';
+import { getMonths, getVisits, technicianStats } from '../data/history.js';
 import {
   billableGroups, groupFor, invoiceFromGroup, irsaliyeFromVisit, irsaliyeNo
 } from '../data/billing.js';
 import { printElement, downloadCSV } from '../ui/export.js';
+import { stackedBarChart, mountChart } from '../ui/charts.js';
 
 const esc = (s) => String(s ?? '')
   .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -124,6 +125,82 @@ export function renderFinance() {
   }
 
   renderBillableVisits();
+  renderTechEfficiency();
+}
+
+/* ------------------------------ travel-vs-on-site labour cost (task 4-2) */
+//
+// The same technicianStats() the team view charts, priced. On-site hours are
+// productive (billable) labour; travel hours are paid but unbillable — the
+// "windshield cost" a route optimiser is trying to shrink. Rates come from the
+// seed (state.techRates, ₺/hour); everything is derived from the fixed history,
+// so the figures repeat exactly on a demo re-run.
+
+function techEfficiencyRows() {
+  const rates = state.techRates || {};
+  return technicianStats().map((t) => {
+    const rate = rates[t.tech] || 150;
+    const onSiteHrs = t.onSiteMin / 60;
+    const travelHrs = t.travelMin / 60;
+    const util = Math.round((t.onSiteMin / (t.onSiteMin + t.travelMin)) * 100);
+    return {
+      tech: t.tech,
+      visits: t.visits,
+      rate,
+      onSiteHrs: Math.round(onSiteHrs),
+      travelHrs: Math.round(travelHrs),
+      onSiteCost: Math.round(onSiteHrs * rate),
+      travelCost: Math.round(travelHrs * rate),
+      travelPerVisit: Math.round((travelHrs * rate) / t.visits),
+      util
+    };
+  });
+}
+
+function renderTechEfficiency() {
+  const body = $('#finEfficiencyBody');
+  if (!body) return;
+
+  const rows = techEfficiencyRows();
+  const totalTravelCost = rows.reduce((s, r) => s + r.travelCost, 0);
+  const totalOnSiteCost = rows.reduce((s, r) => s + r.onSiteCost, 0);
+  const totalVisits = rows.reduce((s, r) => s + r.visits, 0);
+  const labourTotal = totalTravelCost + totalOnSiteCost;
+  const windshieldPct = labourTotal ? Math.round((totalTravelCost / labourTotal) * 100) : 0;
+
+  const tableRows = rows.map((r) => `
+    <tr${r.tech === state.selectedTech ? ' class="fin-eff-sel"' : ''}>
+      <td><b>${esc(r.tech)}</b><br><small class="text-muted">₺${r.rate}/sa · %${r.util} verimli</small></td>
+      <td>${r.visits}</td>
+      <td>${r.onSiteHrs} sa<br><small class="text-muted">${tl(r.onSiteCost)}</small></td>
+      <td>${r.travelHrs} sa<br><small class="text-muted">${tl(r.travelCost)}</small></td>
+      <td style="font-weight:700; color:${r.util >= 70 ? 'var(--green)' : r.util >= 60 ? 'var(--amber)' : 'var(--red)'};">${tl(r.travelPerVisit)}</td>
+    </tr>`).join('');
+
+  body.innerHTML = `
+    <div class="fin-eff-metrics">
+      <div class="fin-eff-metric"><span>Yol (windshield) maliyeti</span><strong style="color:var(--red);">${tl(totalTravelCost)}</strong><small>işgücü bütçesinin %${windshieldPct}'i</small></div>
+      <div class="fin-eff-metric"><span>Saha işgücü maliyeti</span><strong style="color:var(--green);">${tl(totalOnSiteCost)}</strong><small>faturalanabilir üretim</small></div>
+      <div class="fin-eff-metric"><span>Ziyaret başı yol maliyeti</span><strong>${tl(totalVisits ? Math.round(totalTravelCost / totalVisits) : 0)}</strong><small>${totalVisits} ziyaret ortalaması</small></div>
+    </div>
+    <div class="fin-eff-chart-wrap"><div id="finEfficiencyChart" class="fin-eff-chart"></div></div>
+    <div class="table-panel" style="border:1px solid var(--line); border-radius:8px; overflow:auto; margin-top:12px;">
+      <table>
+        <thead><tr><th>Teknisyen</th><th>Ziyaret</th><th>Saha (üretken)</th><th>Yol (windshield)</th><th>Yol/ziyaret</th></tr></thead>
+        <tbody>${tableRows}</tbody>
+      </table>
+    </div>
+    <p class="text-muted" style="font-size:10px; margin-top:8px;">Yol süresi ödenen ama faturalanamayan işgücüdür; rota optimizasyonu bu maliyeti düşürmeyi hedefler. Rakamlar 12 aylık gerçek ziyaret geçmişinden türetilir.</p>`;
+
+  mountChart('#finEfficiencyChart', stackedBarChart({
+    labels: rows.map((r) => r.tech.split(' ')[0]),
+    series: [
+      { name: 'Saha maliyeti', values: rows.map((r) => r.onSiteCost), color: '#10b981' },
+      { name: 'Yol maliyeti', values: rows.map((r) => r.travelCost), color: '#ef4444' }
+    ],
+    height: 220,
+    format: (n) => tl(n)
+  }));
 }
 
 /* -------------------------------------------- billable visits panel (4-1/4-3) */
