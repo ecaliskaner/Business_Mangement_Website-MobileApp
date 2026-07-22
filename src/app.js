@@ -12,6 +12,7 @@ import { checkSession, logout } from './core/roles.js';
 import { techSites } from './data/seed.js';
 import { render, setView } from './core/router.js';
 import { modal } from './ui/modal.js';
+import { dashboardRangeClicks } from './views/dashboard.js';
 import { renderSites } from './views/sites.js';
 import { renderInsights } from './views/insights.js';
 import {
@@ -220,6 +221,7 @@ export function loginSubmit(e) {
 // to later ones. A handler returns true to stop processing the event.
 const CLICK_CHAIN = [
   demoClicks,
+  dashboardRangeClicks,
   shellClicks,
   workListClicks,
   teamRosterClicks,

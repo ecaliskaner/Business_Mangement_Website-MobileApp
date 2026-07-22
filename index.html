@@ -7,6 +7,10 @@
     <meta name="theme-color" content="#18181b" />
     <meta name="description" content="Ladybug Operations is a digital pest control and field service operations platform." />
     <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="preload" href="./vendor/fonts/inter-400.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="./vendor/fonts/inter-600.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="./vendor/fonts/inter-ext-400.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="./vendor/fonts/inter-ext-600.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
@@ -46,8 +50,8 @@
           <button id="mobileMenu" class="icon-btn mobile-only" aria-label="Menüyü aç">☰</button>
           <div class="breadcrumb"><span>Apex Operations</span><b>/</b><strong id="pageCrumb">Genel bakış</strong></div>
           <div class="topbar-actions">
-            <button class="icon-btn" data-action="search" aria-label="Ara">⌕</button>
-            <button class="icon-btn notification" data-action="notifications" aria-label="Bildirimler">♧<i></i></button>
+            <button class="icon-btn" data-action="search" aria-label="Ara">🔍</button>
+            <button class="icon-btn notification" data-action="notifications" aria-label="Bildirimler">🔔<i></i></button>
             <button class="primary-btn" id="newWorkOrder"><span>＋</span> İş emri oluştur</button>
           </div>
         </header>
@@ -55,7 +59,7 @@
         <section id="dashboard" class="view active">
           <div class="page-heading">
             <div><p class="overline">13 TEMMUZ 2026 · OPERASYON ÖZETİ</p><h1>Kontrol sizde.</h1><p>Portföyünüzdeki tesisleri, saha ekibini ve riskleri tek yerden yönetin.</p></div>
-            <div class="range-control"><button class="active">Bugün</button><button>Bu hafta</button><button>Bu ay</button></div>
+            <div class="range-control"><button class="active" data-range="today">Bugün</button><button data-range="week">Bu hafta</button><button data-range="month">Bu ay</button></div>
           </div>
 
           <div class="metric-grid">
@@ -101,10 +105,10 @@
           
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
             <div class="work-summary" style="margin-bottom:0; display:flex; gap:8px; flex:1;">
-              <button class="work-stat active" data-work-filter="all" style="padding:8px 12px; min-width:120px;"><span>Açık İş</span><strong id="workStatAll">0</strong></button>
-              <button class="work-stat" data-work-filter="critical" style="padding:8px 12px; min-width:120px;"><span>Kritik</span><strong id="workStatCritical">0</strong></button>
-              <button class="work-stat" data-work-filter="scheduled" style="padding:8px 12px; min-width:120px;"><span>Bugün</span><strong id="workStatScheduled">0</strong></button>
-              <button class="work-stat" data-work-filter="completed" style="padding:8px 12px; min-width:120px;"><span>Tamamlanan</span><strong id="workStatCompleted">0</strong></button>
+              <button class="work-stat active" data-work-filter="all" aria-label="Açık İş"><span>Açık İş</span><strong id="workStatAll">0</strong></button>
+              <button class="work-stat" data-work-filter="critical" aria-label="Kritik"><span>Kritik</span><strong id="workStatCritical">0</strong></button>
+              <button class="work-stat" data-work-filter="scheduled" aria-label="Bugün"><span>Bugün</span><strong id="workStatScheduled">0</strong></button>
+              <button class="work-stat" data-work-filter="completed" aria-label="Tamamlanan"><span>Tamamlanan</span><strong id="workStatCompleted">0</strong></button>
             </div>
             
             <div style="display:flex; gap:8px; margin-left:14px;">
@@ -171,6 +175,11 @@
               <div id="routeOptBody" class="route-opt-body"></div>
             </article>
           </div>
+
+          <article class="panel productivity-panel">
+            <div class="panel-header"><div><p class="overline">VERİMLİLİK & ZAMAN</p><h2>Yol / saha süresi & teknisyen verimliliği</h2></div><span class="status-chip blue" id="teamUtilPill">—</span></div>
+            <div id="teamProductivityBody" class="productivity-body"></div>
+          </article>
 
           <article class="panel cred-panel">
             <div class="panel-header"><div><p class="overline">TEKNİSYEN BELGELERİ</p><h2>Yetkinlik & uygunluk kartları</h2></div><span class="status-chip healthy">KVKK uyumlu</span></div>
@@ -492,6 +501,18 @@
               </div>
             </article>
           </div>
+
+          <!-- Phase 4-2: travel-vs-on-site labour cost & technician efficiency -->
+          <article class="panel fin-eff-panel" style="margin-top:16px;">
+            <div class="panel-header" style="margin-bottom:10px;">
+              <div>
+                <p class="overline">SAHA ZAMAN MALİYETİ & VERİMLİLİK</p>
+                <h2>Yol / Saha İşgücü Analizi</h2>
+                <p class="text-muted" style="font-size:11px; margin-top:2px;">Teknisyen mesaisinin ne kadarı faturalanabilir saha üretimi, ne kadarı ödenen ama faturalanamayan yol süresi.</p>
+              </div>
+            </div>
+            <div id="finEfficiencyBody"></div>
+          </article>
 
           <!-- Phase 4-1 / 4-3: auto-irsaliye + invoice from completed visits -->
           <article class="panel bill-panel" style="margin-top:16px;">

@@ -2585,6 +2585,7 @@ tr.rec-row-selected > td { background: #eef4ff !important; }
 .audit-live {
   font-size: 8px; font-weight: 800; color: #fff; background: var(--red);
   padding: 1px 5px; border-radius: 10px; vertical-align: middle;
+}
 /* ============================================
    Phase 4-1 / 4-3: auto-irsaliye + invoice from completed visits
    Appended by the business-layer session — see docs/SESSIONS.md.
@@ -2784,6 +2785,7 @@ tr.rec-row-selected > td { background: #eef4ff !important; }
   .bill-table tr { break-inside: avoid; page-break-inside: avoid; }
   .bill-totals, .bill-signs { break-inside: avoid; page-break-inside: avoid; }
   .bill-totals-box { background: #fafafa !important; }
+}
 /* ===== Phase 5: demo polish — presenter bar, tour, notif badge (4-4/5-2/5-3/5-4) ===== */
 
 /* Notification badge on the topbar bell (4-4). */
@@ -2917,3 +2919,371 @@ tr.rec-row-selected > td { background: #eef4ff !important; }
 @media (max-width: 640px) {
   .presenter-bar { left: 8px; right: 8px; bottom: 8px; justify-content: center; flex-wrap: wrap; }
 }
+
+/* ===== Phase 4-2: travel-vs-on-site time & technician efficiency ===== */
+
+/* -- Team side: productivity / utilisation panel -- */
+.productivity-body { display: flex; flex-direction: column; gap: 14px; }
+.prod-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+}
+.prod-stat {
+  background: var(--soft);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.prod-stat span { font-size: 10px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); }
+.prod-stat strong { font-size: 22px; font-weight: 800; line-height: 1.1; }
+.prod-stat strong.good { color: var(--green); }
+.prod-stat strong.mid { color: var(--amber); }
+.prod-stat strong.bad { color: var(--red); }
+.prod-stat small { font-size: 10px; color: var(--muted); }
+
+.prod-chart-wrap { min-width: 0; }
+.prod-legend { display: flex; gap: 16px; font-size: 11px; color: var(--muted); }
+.prod-legend i {
+  display: inline-block; width: 10px; height: 10px; border-radius: 3px;
+  margin-right: 5px; vertical-align: middle;
+}
+.prod-legend i.on { background: var(--green); }
+.prod-legend i.travel { background: var(--amber); }
+
+.prod-rows { display: flex; flex-direction: column; gap: 8px; }
+.prod-row {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px 12px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.prod-row:hover { background: var(--soft); }
+.prod-row.selected { border-color: var(--blue); background: var(--soft); }
+.prod-row-head { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.prod-row-id { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.prod-row-id b { font-size: 12px; }
+.prod-row-id small { font-size: 10px; color: var(--muted); }
+.prod-util { font-size: 13px; font-weight: 800; }
+.prod-util.ok { color: var(--green); }
+.prod-util.mid { color: var(--amber); }
+.prod-util.low { color: var(--red); }
+.prod-bar { display: flex; height: 8px; border-radius: 5px; overflow: hidden; background: var(--line); }
+.prod-bar-on { background: var(--green); }
+.prod-bar-travel { background: var(--amber); }
+
+/* -- Finance side: windshield / labour cost panel -- */
+.fin-eff-metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.fin-eff-metric {
+  background: var(--soft);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.fin-eff-metric span { font-size: 10px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); }
+.fin-eff-metric strong { font-size: 21px; font-weight: 800; line-height: 1.1; }
+.fin-eff-metric small { font-size: 10px; color: var(--muted); }
+.fin-eff-chart-wrap { min-width: 0; }
+.fin-eff-sel { background: var(--soft); }
+
+/* ===================================================================
+   DESIGN SYSTEM v2 — Modern SaaS refresh (Vercel / Linear inspired)
+   Appended last: these rules intentionally override the legacy styles
+   above. Non-destructive — delete this whole block to revert.
+   =================================================================== */
+
+/* ---- Inter, self-hosted (offline). latin + latin-ext for Turkish. ---- */
+@font-face { font-family: 'Inter v2'; font-style: normal; font-weight: 400; font-display: swap;
+  src: url('./vendor/fonts/inter-400.woff2') format('woff2');
+  unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+2000-206F,U+2074,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
+@font-face { font-family: 'Inter v2'; font-style: normal; font-weight: 400; font-display: swap;
+  src: url('./vendor/fonts/inter-ext-400.woff2') format('woff2');
+  unicode-range: U+0100-02AF,U+0304,U+0308,U+0329,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF; }
+@font-face { font-family: 'Inter v2'; font-style: normal; font-weight: 500; font-display: swap;
+  src: url('./vendor/fonts/inter-500.woff2') format('woff2');
+  unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+2000-206F,U+2074,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
+@font-face { font-family: 'Inter v2'; font-style: normal; font-weight: 500; font-display: swap;
+  src: url('./vendor/fonts/inter-ext-500.woff2') format('woff2');
+  unicode-range: U+0100-02AF,U+0304,U+0308,U+0329,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF; }
+@font-face { font-family: 'Inter v2'; font-style: normal; font-weight: 600; font-display: swap;
+  src: url('./vendor/fonts/inter-600.woff2') format('woff2');
+  unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+2000-206F,U+2074,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
+@font-face { font-family: 'Inter v2'; font-style: normal; font-weight: 600; font-display: swap;
+  src: url('./vendor/fonts/inter-ext-600.woff2') format('woff2');
+  unicode-range: U+0100-02AF,U+0304,U+0308,U+0329,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF; }
+@font-face { font-family: 'Inter v2'; font-style: normal; font-weight: 700; font-display: swap;
+  src: url('./vendor/fonts/inter-700.woff2') format('woff2');
+  unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+2000-206F,U+2074,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
+@font-face { font-family: 'Inter v2'; font-style: normal; font-weight: 700; font-display: swap;
+  src: url('./vendor/fonts/inter-ext-700.woff2') format('woff2');
+  unicode-range: U+0100-02AF,U+0304,U+0308,U+0329,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF; }
+@font-face { font-family: 'Inter v2'; font-style: normal; font-weight: 800; font-display: swap;
+  src: url('./vendor/fonts/inter-800.woff2') format('woff2');
+  unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+2000-206F,U+2074,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
+@font-face { font-family: 'Inter v2'; font-style: normal; font-weight: 800; font-display: swap;
+  src: url('./vendor/fonts/inter-ext-800.woff2') format('woff2');
+  unicode-range: U+0100-02AF,U+0304,U+0308,U+0329,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF; }
+
+/* ---- Refined tokens (Modern SaaS neutrals + single blue accent) ---- */
+:root {
+  --ds-font: 'Inter v2', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+
+  --n-0:  #ffffff;
+  --n-25: #fcfcfd;
+  --n-50: #f8f8fa;
+  --n-100:#f3f3f5;
+  --n-150:#ececef;
+  --n-200:#e4e4e8;
+  --n-300:#d4d4d8;
+  --n-400:#a1a1aa;
+  --n-500:#71717a;
+  --n-600:#52525b;
+  --n-700:#3f3f46;
+  --n-800:#27272a;
+  --n-900:#18181b;
+  --n-950:#0b0b0e;
+
+  --accent:        #2563eb;
+  --accent-hover:  #1d4fd7;
+  --accent-soft:   #eff4ff;
+  --accent-border: #cfe0fe;
+
+  --green:#059669; --green-soft:#ecfdf5;
+  --amber:#d97706; --amber-soft:#fffbeb;
+  --red:#dc2626;   --red-soft:#fef2f2;
+  --violet:#7c3aed;
+
+  --ink: var(--n-900);
+  --foreground: var(--n-900);
+  --muted: var(--n-500);
+  --muted-foreground: var(--n-400);
+  --line: var(--n-200);
+  --border: var(--n-200);
+  --soft: var(--n-100);
+  --secondary: var(--n-100);
+  --paper: var(--n-0);
+  --card: var(--n-0);
+  --blue: var(--accent);
+  --blue-soft: var(--accent-soft);
+  --primary: var(--n-900);
+  --navy: var(--n-950);
+
+  --radius: 10px;
+  --radius-sm: 7px;
+  --radius-lg: 14px;
+
+  --shadow-xs: 0 1px 2px rgba(16,17,20,.04);
+  --shadow-sm: 0 1px 2px rgba(16,17,20,.05), 0 1px 3px rgba(16,17,20,.04);
+  --shadow-md: 0 2px 4px rgba(16,17,20,.04), 0 4px 12px rgba(16,17,20,.06);
+  --shadow-lg: 0 12px 32px -8px rgba(16,17,20,.16), 0 4px 10px rgba(16,17,20,.06);
+  --shadow: var(--shadow-sm);
+}
+
+/* ---- Base ---- */
+body {
+  font-family: var(--ds-font);
+  background: var(--n-50);
+  color: var(--n-900);
+  font-size: 13.5px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  font-feature-settings: 'cv02','cv03','cv04','cv11';
+}
+::selection { background: var(--accent-soft); color: var(--accent-hover); }
+
+.page-heading h1 { font-family: var(--ds-font); font-weight: 700; font-size: 25px; letter-spacing: -0.021em; color: var(--n-900); margin-top: 4px; }
+.panel h2, .modal-card h2, .task-detail h2 { font-family: var(--ds-font); font-weight: 600; letter-spacing: -0.014em; color: var(--n-900); }
+.panel h2 { font-size: 15px; }
+.overline { font-family: var(--ds-font); font-weight: 600; font-size: 10.5px; letter-spacing: 0.07em; color: var(--n-400); text-transform: uppercase; }
+.page-heading > div > p:last-child { color: var(--n-500); font-size: 13px; }
+.metric-card strong, .work-stat strong, .rank-score, .prod-stat strong,
+.fin-eff-metric strong, .facility-score-card span, .donut span,
+.table-panel td, td.num, .num { font-variant-numeric: tabular-nums; }
+
+/* ---- Sidebar ---- */
+.sidebar { background: var(--n-950); padding: 20px 12px 14px; border-right: 1px solid #1c1c20; }
+.brand b { font-family: var(--ds-font); font-weight: 700; letter-spacing: -0.02em; font-size: 18px; }
+.brand small, .workspace-switcher small, .sidebar-footer small { color: #8b8b95; }
+.workspace-switcher { background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08); border-radius: var(--radius-sm); margin: 0 2px 20px; }
+.nav-label { color: #6b6b76; font-weight: 600; letter-spacing: 0.08em; margin: 16px 12px 6px; }
+.nav-item { font-family: var(--ds-font); font-weight: 500; font-size: 13px; color: #a1a1ac; height: 37px; border-radius: var(--radius-sm); gap: 10px; transition: background .12s, color .12s; }
+.nav-item > span { color: #8a8a95; font-size: 15px; transition: color .12s; }
+.nav-item:hover { background: rgba(255,255,255,.05); color: #fafafa; }
+.nav-item:hover > span { color: #d4d4d8; }
+.nav-item.active { background: rgba(255,255,255,.08); color: #ffffff; }
+.nav-item.active > span { color: var(--accent); }
+.nav-item.active::before { content:''; position:absolute; left:-12px; top:50%; transform:translateY(-50%); width:3px; height:18px; border-radius:0 3px 3px 0; background: var(--accent); }
+.nav-item em { background: rgba(255,255,255,.1); color: #d4d4d8; font-weight: 600; font-style: normal; border-radius: 6px; }
+.sidebar-footer { border-top: 1px solid rgba(255,255,255,.08); }
+
+/* ---- Topbar ---- */
+.topbar { height: 62px; border-bottom: 1px solid var(--n-200); }
+.breadcrumb { color: var(--n-400); font-size: 12px; }
+.breadcrumb b { color: var(--n-400); }
+.breadcrumb strong { color: var(--n-700); font-weight: 600; }
+.icon-btn { border-radius: var(--radius-sm); color: var(--n-500); transition: background .12s, color .12s; }
+.icon-btn:hover { background: var(--n-100); color: var(--n-800); }
+
+/* ---- Buttons ---- */
+.primary-btn, .secondary-btn, .text-btn, .filter-btn { font-family: var(--ds-font); font-weight: 600; }
+.primary-btn { height: 34px; padding: 0 14px; border-radius: var(--radius-sm); background: var(--n-900); color: #fff; box-shadow: var(--shadow-xs); transition: background .12s, transform .04s; }
+.primary-btn:hover { background: var(--n-800); }
+.primary-btn:active { transform: translateY(0.5px); }
+.secondary-btn { height: 34px; padding: 0 13px; border: 1px solid var(--n-200); border-radius: var(--radius-sm); background: var(--n-0); color: var(--n-800); box-shadow: var(--shadow-xs); transition: background .12s, border-color .12s; }
+.secondary-btn:hover { background: var(--n-50); border-color: var(--n-300); }
+.text-btn { color: var(--accent); font-weight: 600; }
+.text-btn:hover { color: var(--accent-hover); }
+button:focus-visible, a:focus-visible, .nav-item:focus-visible, input:focus-visible, select:focus-visible {
+  outline: 2px solid var(--accent); outline-offset: 1px; border-radius: var(--radius-sm);
+}
+
+/* ---- Inputs / forms ---- */
+.form-input, .form-select, .form-grid input, .form-grid select, .search-field {
+  font-family: var(--ds-font); border-radius: var(--radius-sm); border: 1px solid var(--n-200);
+  background: var(--n-0); transition: border-color .12s, box-shadow .12s;
+}
+.form-input:focus, .form-select:focus, .form-grid input:focus, .form-grid select:focus {
+  outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft);
+}
+.form-grid label { color: var(--n-600); font-weight: 600; }
+.search-field:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+
+/* ---- Panels / cards ---- */
+.panel, .metric-card, .work-stat, .report-card, .modal-card,
+.facility-sidebar, .station-detail-sidebar {
+  border: 1px solid var(--n-200); border-radius: var(--radius); background: var(--n-0);
+  box-shadow: var(--shadow-sm);
+}
+.panel { padding: 18px; }
+.panel-header { margin-bottom: 15px; }
+
+/* ---- Metric cards ---- */
+.metric-card { min-height: 104px; padding: 17px 18px; border-radius: var(--radius); transition: border-color .12s, box-shadow .12s; }
+.metric-card:hover { border-color: var(--n-300); box-shadow: var(--shadow-md); }
+.metric-card strong { font-family: var(--ds-font); font-weight: 700; font-size: 25px; letter-spacing: -0.02em; }
+.metric-card span { color: var(--n-500); }
+.metric-icon { border-radius: var(--radius-sm); }
+
+/* ---- Tables ---- */
+.table-panel { border: 1px solid var(--n-200); border-radius: var(--radius); }
+.table-panel th { background: var(--n-50); color: var(--n-500); font-weight: 600; font-size: 10.5px; letter-spacing: 0.04em; height: 40px; border-bottom: 1px solid var(--n-200); }
+.table-panel td { border-bottom: 1px solid var(--n-150); font-size: 12.5px; }
+.table-panel tbody tr { transition: background .1s; }
+.table-panel tbody tr:hover { background: var(--n-50); }
+
+/* ---- Status chips ---- */
+.status-chip { font-family: var(--ds-font); font-weight: 600; border-radius: 999px; padding: 3px 9px; font-size: 10.5px; letter-spacing: 0.01em; }
+.status-chip.healthy, .status-chip.success { background: var(--green-soft); color: var(--green); }
+.status-chip.warning { background: var(--amber-soft); color: var(--amber); }
+.status-chip.critical, .status-chip.danger { background: var(--red-soft); color: var(--red); }
+.status-chip.blue, .status-chip.info { background: var(--accent-soft); color: var(--accent-hover); }
+.status-chip.secondary { background: var(--n-100); color: var(--n-600); }
+
+/* ---- Modal ---- */
+.modal { background: rgba(11,11,14,.5); backdrop-filter: blur(3px); }
+.modal-card { border-radius: var(--radius-lg); box-shadow: var(--shadow-lg); padding: 24px; }
+.modal-card h2 { font-size: 19px; font-weight: 700; letter-spacing: -0.02em; }
+
+/* ---- Toast ---- */
+.toast { border-radius: var(--radius); background: var(--n-900); border: 1px solid var(--n-800); box-shadow: var(--shadow-lg); font-family: var(--ds-font); }
+
+/* ---- Live pill ---- */
+.live-pill { color: var(--green); font-weight: 600; }
+.live-pill i { background: var(--green); box-shadow: 0 0 0 3px var(--green-soft); }
+
+/* ===================================================================
+   DESIGN SYSTEM v2b — interactive-state fixes (topbar icons, filter
+   buttons, dashboard range control). Appended after v2 for the same
+   non-destructive, delete-the-block-to-revert reason.
+   =================================================================== */
+
+/* ---- Topbar icon buttons (search / notifications) ----
+   Previously a bare 17px glyph with no default affordance — easy to miss
+   and, worse, the bell used the wrong glyph entirely (♧, a card suit).
+   Now a filled circular control with a visible idle state. */
+.topbar-actions .icon-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  background: var(--n-100);
+  border: 1px solid transparent;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  color: var(--n-600);
+  transition: background .12s, border-color .12s, transform .04s;
+}
+.topbar-actions .icon-btn:hover { background: var(--n-150); color: var(--n-800); }
+.topbar-actions .icon-btn:active { transform: scale(0.94); }
+.topbar-actions .icon-btn.notification { position: relative; }
+.topbar-actions .icon-btn.notification i {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--red);
+  border: 2px solid var(--n-0);
+}
+
+/* ---- Dashboard range control (Bugün / Bu hafta / Bu ay) ----
+   Was styled but never wired to a handler; now that it drives real
+   history-derived data (dashboard.js), give the active segment a clearly
+   filled state instead of the barely-there grey tint it had before. */
+.range-control { gap: 2px; }
+.range-control button {
+  font-weight: 600;
+  color: var(--n-500);
+  transition: background .12s, color .12s;
+}
+.range-control button:hover { background: var(--n-100); color: var(--n-800); }
+.range-control button.active {
+  background: var(--n-900);
+  color: #fff;
+}
+.range-control button.active:hover { background: var(--n-800); }
+
+/* ---- Work-order / site filter chips ----
+   Inline padding/min-width on the work-stat buttons fought the shared
+   class; sizing now lives here. Active state gets an accent fill instead
+   of the old near-invisible pale-blue tint so "did my click register" is
+   obvious at a glance. */
+.work-stat {
+  padding: 10px 14px;
+  min-width: 128px;
+  border-radius: var(--radius);
+  transition: background .12s, border-color .12s, box-shadow .12s;
+}
+.work-stat span { color: var(--n-500); font-weight: 600; }
+.work-stat:hover { border-color: var(--n-300); background: var(--n-50); }
+.work-stat.active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+.work-stat.active span { color: var(--accent-hover); }
+.work-stat.active strong { color: var(--accent-hover); }
+
+.filter-btn { transition: background .12s, border-color .12s, color .12s; }
+.filter-btn:hover { border-color: var(--n-300); background: var(--n-50); }
+.filter-btn.active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent-hover);
+}
+.filter-btn.active b { color: var(--accent-hover); }
